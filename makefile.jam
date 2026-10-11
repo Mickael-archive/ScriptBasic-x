@@ -80,16 +80,16 @@ all: {MainExe scriba} {MainExe sbhttpd} {MainLib libscriba}
 
 ----------------------------------------------------------------------}
 errcodes.c : errors.def
-	perl generrh.pl
+	bin/tools/generrh
 
 syntax.c : syntax.def
-	perl syntaxer.pl
+	bin/tools/syntaxer
 
 lmt_none.c : lmt_none.def
-	perl lmt_make.pl $?
+	bin/tools/lmt_make $?
 
 lmt_httpd.c : lmt_httpd.def
-	perl lmt_make.pl $?
+	bin/tools/lmt_make $?
 
 {@comment ------------------------------------------------------------
 

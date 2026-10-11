@@ -421,25 +421,31 @@ else{
     }
   }
 
+if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them first
+  print "building the C code generator tools in tools/codegen\n";
+  &logit("make -C tools/codegen");
+  system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
+  }
+
 if( ! $OPT{'--no-syntaxer'} ){# default is to run the syntaxer.pl
   # run pre-compile tasks
-  print "running syntaxer.pl to generate the syntax defintion C language tables from syntax.def\n";
-  &logit("perl syntaxer.pl");
-  `perl syntaxer.pl`;
+  print "running the syntaxer tool to generate the syntax definition C language tables from syntax.def\n";
+  &logit("bin/tools/syntaxer");
+  `bin/tools/syntaxer`;
   }
 
 if( ! $OPT{'--no-generrh'} ){# default is to run the generrh.pl
-  print "running generrh.pl to generate the error messages from errors.def\n";
-  `perl generrh.pl`;
+  print "running the generrh tool to generate the error messages from errors.def\n";
+  `bin/tools/generrh`;
   }
 
 if( ! $OPT{'--no-lmt_make'} ){#default is to run the lmt_make.pl for all lmt_*.def files
-  print "running lmt_make.pl for all lmt*.def files\n";
+  print "running the lmt_make tool for all lmt*.def files\n";
   opendir(DIR,".") or die "Can not open the current directory.";
   my @lmtfiles = grep /^lmt_.*\.def$/ , readdir(DIR);
   closedir DIR;
   for( @lmtfiles ){
-    `perl lmt_make.pl $_`;
+    `bin/tools/lmt_make $_`;
     }
   }
 
@@ -474,10 +480,10 @@ if( ! $OPT{'--no-headerer'} ){# default is to run headerer for all .c files recu
   print "there are ",$#files+1," C source files in the source tree\n";
 
   #
-  # run headerer.pl for all xxx.c files
+  # run the headerer tool for all xxx.c files
   #
   for( @files ){
-    `perl headerer.pl $_`;
+    `bin/tools/headerer $_`;
     }
   }
 
@@ -787,7 +793,7 @@ sub configure_module {
   print "executing headerer for the C files\n";
   for my $f ( @cfiles ){
     print " extracting header from $f\n";
-    `perl headerer.pl extensions/$module/$f`;
+    `bin/tools/headerer extensions/$module/$f`;
     }
 
   print "creating the module object directory\n";
