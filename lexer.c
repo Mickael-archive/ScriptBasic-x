@@ -121,7 +121,7 @@ but was developed to be general enough to be used in other projects.
 CUT*/
 #define BUFFERINCREASE 1024
 
-#if (!defined(_WIN32) && !defined(__MACOS__))
+#if (!defined(_WIN32))
 int stricmp(char *,char*);
 #endif
 

@@ -102,17 +102,13 @@ if( $OPT{'--load'} ){
   close F;
   }
 
-# determine if this is UNIX or NT or MacOS and
+# determine if this is UNIX or NT or Darwin and
 # also determine the source root directory
-# Note: for macintosh it is assumed that the
-#       development OS is OS X even though the
-#       target may be OS 9 or below
 
 use Config;
 
-die 'Can only use one of --nt, --unix, --darwin, --macos at the same time'
-     if ($OPT{'--nt'} ne '') + ($OPT{'--unix'} ne '') + ($OPT{'--darwin'} ne '') + 
-        ($OPT{'--macos'} ne '') > 1;
+die 'Can only use one of --nt, --unix, --darwin at the same time'
+     if ($OPT{'--nt'} ne '') + ($OPT{'--unix'} ne '') + ($OPT{'--darwin'} ne '') > 1;
 
 if( $OPT{'--nt'} ){
   $cwd = `CD`;
@@ -132,9 +128,7 @@ elsif( $OPT{'--unix'} ){
 elsif( $OPT{'--darwin'} ){
   $unix = "darwin";
   }
-elsif( $OPT{'--macos'} ){
-  $unix = "macos";
-  }
+
 else{
   # if command line option does not specify the operating system
   $cwd = '';
@@ -146,22 +140,10 @@ else{
     $ds = '\\';
     die "Out of luck determining the OS, nor 'pwd' neither 'CD' worked." if 0 == length($cwd);
     }else{
-    $unix = "unix";# seems to be UNIX, but let's try if this is NT with cygwin installed
-    # use capital letters no to get into the home dir when under UNIX
-    $ntcwd = eval{ `CD`; };
-    if( substr($ntcwd,2,1) eq ':' ){
-      # hoho ho you have cygwin installed, but cd returned
-      $cwd = $ntcwd;
-      $unix = "";
-      }else{
-      # OK, so we really are unix, but do we have any special flavours?
-      if( $Config{osname} == 'darwin' ){ # If we are using the darwin build of perl
-        if( $ENV{CWINSTALL} ){
-          $unix = "macos";
-          }else{
-          $unix = "darwin";
-          };
-        }
+    $unix = "unix";
+    # do we have any special flavours?
+    if( $Config{osname} eq 'darwin' ){ # If we are using the darwin build of perl
+      $unix = "darwin";
       }
     }
   }
@@ -427,10 +409,7 @@ if( ! $OPT{'--no-makefile'} ){# default is to create the makefiles
     &logit("perl jamal.pl -m make_darwin.jim makefile.jam bin/make/Makefile");
     `perl jamal.pl -m make_darwin.jim makefile.jam bin/make/Makefile`;
     }
-  elsif( $unix eq "macos" ){
-    &logit("perl jamal.pl -m make_macos.jim makefile.jam bin/make/Makefile");
-    `perl jamal.pl -m make_macos.jim makefile.jam bin/make/Makefile`;
-    }else{
+else{
     # compile the makefiles from source (note that directory.jim is ready already)
     &logit("perl jamal.pl -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile");
     `perl jamal.pl -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile`;
@@ -521,7 +500,7 @@ if( ! $OPT{'--no-modules'} ){# configure all modules that are in the system
       print `perl setup.pl --module=$extension $nt $bcc --log-append`;
       if( ( ( $unix eq 'unix')   && ! -e "extensions/$extension/notunix.txt"   ) ||
           ( ( $unix eq 'darwin') && ! -e "extensions/$extension/notdarwin.txt" ) ||
-          ( ( $unix eq 'macos')  && ! -e "extensions/$extension/notmacos.txt"  ) ||
+
           ( ( !$unix )           && ! -e "extensions/$extension/notnt.txt"     ) ){
         push @modules_set_up , $extension;
         }
@@ -643,7 +622,7 @@ sub check_compilation_result {
 
   if( $unix ){
     print "scriba executable ", -e "bin/exe/scriba" ? "OK  " : "FAIL","\n";
-    print "sbhttpd executable ", -e "bin/exe/sbhttpd" ? "OK  " : "FAIL" , "\n" unless $unix eq 'macos';
+    print "sbhttpd executable ", -e "bin/exe/sbhttpd" ? "OK  " : "FAIL" , "\n";
     print "libscriba library ", -e "bin/lib/libscriba.a" ? "OK  " : "FAIL", "\n";
 
     #
@@ -662,11 +641,6 @@ sub check_compilation_result {
         next if -e "extensions/$module/notdarwin.txt";
         print "MODULE $module: ", ' 'x(8-length($module));
         print "dll ", ($dll = -e "bin/mod/dll/$module.dylib") ? "OK   " : "FAIL ";
-        }
-      elsif( $unix eq "macos" ){
-        next if -e "extensions/$module/notmacos.txt";
-        print "MODULE $module: ", ' 'x(8-length($module));
-        print "dll ", ($dll = -e "bin/mod/dll/$module") ? "OK   " : "FAIL ";
         }else{
         next if -e "extensions/$module/notunix.txt";
         print "MODULE $module: ", ' 'x(8-length($module));
@@ -777,12 +751,7 @@ sub configure_module {
         last;
         }
       }
-    elsif( $unix eq 'macos' ){
-      if( /^MCLIBS:\s*(.*)$/ ){
-        $libopt = $1 || ' ';
-        last;
-        }
-      }
+
     else {
       if( /^NTLIBS:\s*(.*)$/ ){
         $libopt = $1 || ' ';
@@ -855,11 +824,6 @@ sub configure_module {
     print "Processing jamal files creating makefile\n";
     `perl jamal.pl -m make_darwin.jim extensions/$module/makefile.jam extensions/$module/makefile`
        unless -e "extensions/$module/notdarwin.txt";
-    }
-  elsif( $unix eq "macos" ){
-    print "Processing jamal files creating makefile\n";
-    `perl jamal.pl -m make_macos.jim extensions/$module/makefile.jam extensions/$module/makefile`
-       unless -e "extensions/$module/notmacos.txt";
     }else{
     print "Processing jamal files creating makefile.vc7\n";
     `perl jamal.pl -m make_vc7.jim extensions/$module/makefile.jam extensions/$module/makefile.vc7`
@@ -876,7 +840,7 @@ sub configure_module {
       print OUT "cd extensions/$module\nmake\ncd ../..\n";
       close OUT;
       if( ( $unix eq 'darwin' && ! -e "extensions/$module/notdarwin.txt") ||
-          ( $unix eq 'macos'  && ! -e "extensions/$module/notmacos.txt") ||
+
           ( $unix eq 'unix'  && ! -e "extensions/$module/notunix.txt") ){
         `/bin/sh modmake.sh`;
         my $ModLibFile = "${cwd}bin/mod/lib/$module.a";
@@ -884,9 +848,7 @@ sub configure_module {
         if( $unix eq 'darwin' ){
           $ModDllFile = "${cwd}bin/mod/dll/$module.dylib";
           }
-        elsif( $unix eq 'macos' ){
-          $ModDllFile = "${cwd}bin/mod/dll/$module";
-          }
+
         if( -e $ModLibFile &&
             -e $ModDllFile ){
           print "Module was compiled fine\n";
@@ -1861,8 +1823,7 @@ END
 
 You can use this option to tell setup that the operating system is NT or
 some other Win32 operating system and not UNIX. This may be needed on some
-installation where cygwin is installed and makes setup.pl think that it is
-executing in UNIX environment.
+installation where the script erroneously detects a UNIX environment.
 
 To be specific: setup.pl determines the current working directory executing
 the command pwd. If it fails it assumes that this is WIN32 environment. If it
@@ -1895,15 +1856,6 @@ other WIN32 flavour. In this situation you can use this option to tell the
 script that the OS is Darwin.
 END
 
-'--macos' => <<END,
---macos
-
-You can use this option to tell setup that the operating system is MacOS
-(that is, Mac OS 8 to 10 using Metrowerks CodeWarrior and Carbon libs for
-development). It may happen that the setup.pl script erroneously believes that
-the operating system is NT or some other WIN32 flavour. In this situation you
-can use this option to tell the script that the OS is MacOS.
-END
 
 '--save' => <<END,
 --save or --save=file_name
@@ -2398,16 +2350,6 @@ module is meant for UNIX.
 //UXLIBS:
 ----------------------------------------------------------------------------
 
-Remove the two characters // from following line if this module is supposed to
-be compiled under MacOS. If there is a need for some library to successfully
-compile the module under MacOS specify the names of the libraries on the line
-as it is listed for the linker application.
-If there are no libraries, but still the module is to be compiled under MacOS
-do remove the // characters so that the program setup.pl will know that the
-module is meant for MacOS.
-
-//MCLIBS:
-----------------------------------------------------------------------------
 
 Remove the two characters // from following line if this module is supposed to
 be compiled under Darwin. If there is a need for some library to successfully

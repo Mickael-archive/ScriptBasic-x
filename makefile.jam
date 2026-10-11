@@ -55,7 +55,7 @@ Define the object files that are CORE of ScriptBasic and are used in each and ev
  {MainObj environ} {MainObj external} {MainObj extops} {MainObj file} {MainObj function} {MainObj goto} {MainObj if}\
  {MainObj let} {MainObj mathfunc} {MainObj mathops} {MainObj print} {MainObj string} {MainObj time} {MainObj while}}
 
-all: {MainExe scriba} {#if/{#eq {#if/{?macos}/{?macos}/nomacos} nogusi}//{MainExe sbhttpd}} {MainLib libscriba}
+all: {MainExe scriba} {MainExe sbhttpd} {MainLib libscriba}
 
 {@comment ------------------------------------------------------------
 
@@ -168,7 +168,7 @@ lmt_none.c : lmt_none.def
 {#define OBJS={VarObj scribacmd} {MainObj lmt_none}}
 {MainExe scriba} : {MainLib lscriba} {OBJS}
 	{cc} {LdOptOutput {MainExe scriba}} {OBJS} {MainLib lscriba} {StandardLibraries}
-	{#if/{?macos}/echo Please test scriba manually/{exedir}scriba -v}
+	{exedir}scriba -v
 
 {VarObj scribacmd} : {VarC scribacmd}
 	{mkdir {vardir}{VARIATION}}

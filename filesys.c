@@ -22,24 +22,10 @@ TO_HEADER:
 #ifdef WIN32
 #include <windows.h>
 #include <winbase.h>
-#ifndef _WIN32_WCE
 #include <io.h>
 #include <direct.h>
 #include <lm.h>
 #include <lmaccess.h>
-#endif
-#else
-#ifdef _WIN32_WCE
-#include <windows.h>
-#include <winbase.h>
-#include <io.h>
-#include <direct.h>
-#include <lm.h>
-#include <lmaccess.h>
-#else
-#ifdef __MACOS__
-#include <unistd.h>
-#include <dirent.h>
 #else
 #include <sys/file.h>
 #include <sys/types.h>
@@ -50,10 +36,8 @@ TO_HEADER:
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#endif
 #ifndef TYPE_SOCKET
 typedef int SOCKET;
-#endif
 #endif
 #endif
 
@@ -76,29 +60,20 @@ typedef int SOCKET;
 
 */
 
-#ifdef _WIN32_WCE
-#else
 #include <fcntl.h>
-#ifndef __MACOS__
 #include <sys/types.h>
 #include <sys/stat.h>
-#endif
 #include <errno.h>
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
 #ifdef WIN32
-#ifndef _WIN32_WCE
 #include <winsock2.h>
 #include <aclapi.h>
-#endif
 #define SHUT_RDWR SD_BOTH
 #else
-#ifndef __MACOS__
 #include <sys/socket.h>
-#endif
 #include <utime.h>
 #include <signal.h>
 #ifndef SHUT_RDWR
@@ -189,15 +164,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return buf.st_size;
   }
@@ -275,15 +246,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return buf.st_atime;
 #endif
@@ -329,15 +296,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return buf.st_mtime;
 #endif
@@ -381,15 +344,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return buf.st_ctime;
 #endif
@@ -409,15 +368,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return (buf.st_mode&S_IFDIR) ? -1 : 0;
   }
@@ -436,15 +391,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )return 0;
   return (buf.st_mode&S_IFREG) ? -1 : 0;
   }
@@ -463,15 +414,11 @@ CUT*/
 
   i = strlen(pszFileName);
   if( i == 0 )return 0;
-#ifdef __MACOS__
-  st = stat(pszFileName,&buf);
-#else
   i--;
   LastChar = pszFileName[i];
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = (char)0;
   st = stat(pszFileName,&buf);
   if( LastChar == '/' || LastChar == '\\' )pszFileName[i] = LastChar;
-#endif
   if( st == -1 )
     return 0;
   else
@@ -490,7 +437,7 @@ int file_truncate(FILE *fp,
   ){
 /*noverbatim
 CUT*/
-#if (defined(WIN32) || defined(__MACOS__))
+#if (defined(WIN32))
 #if BCC32
 #define _chsize chsize
 #endif
@@ -670,8 +617,6 @@ CUT*/
 	break;
     }
     return i;
-#elif defined(__MACOS__)
-  return 0;
 #else
 /*  return flock(fileno(fp),iLockType); */
   struct flock fl;
@@ -751,8 +696,6 @@ CUT*/
     default:			/* unknown */
       return -1;
     }
-#elif defined(__MACOS__)
-  return 0;
 #else
   struct flock fl;
   int WaitOption;
@@ -821,9 +764,7 @@ int file_mkdir(char *pszDirectoryName
 CUT*/
   char *s;
 
-#ifndef __MACOS__
   for( s = pszDirectoryName ; *s ; s++ )if( *s == '\\' )*s= '/';
-#endif
 #ifdef WIN32
   return _mkdir(pszDirectoryName);
 #else
@@ -846,9 +787,7 @@ int file_rmdir(char *pszDirectoryName
 CUT*/
   char *s;
 
-#ifndef __MACOS__
   for( s = pszDirectoryName ; *s ; s++ )if( *s == '\\' )*s= '/';
-#endif
 #ifdef WIN32
   /* Note that there is no need to convert the / characters to \
      because / is a valid separator under Windows NT just as \ is.  */
@@ -872,9 +811,7 @@ int file_remove(char *pszFileName
 CUT*/
   char *s;
 
-#ifndef __MACOS__
   for( s = pszFileName ; *s ; s++ )if( *s == '\\' )*s= '/';
-#endif
   return remove(pszFileName);
   }
 
@@ -892,19 +829,11 @@ int file_deltree_r(char * buffer){
   int dirlen;
 
   dirlen=strlen(buffer);
-#ifdef __MACOS__
-  if( buffer[dirlen-1] != ':' ){
-    dirlen++;
-    if( dirlen >= MAX_FNLEN )return -1;
-    strcpy(buffer+dirlen-1,":");
-    }
-#else
   if( buffer[dirlen-1] != '/' ){
     dirlen++;
     if( dirlen >= MAX_FNLEN )return -1;
     strcpy(buffer+dirlen-1,"/");
     }
-#endif
   pDirList = file_opendir(buffer,&DirList);
   if( pDirList == NULL )return -1;
   while( pD = file_readdir(pDirList) ){
@@ -935,11 +864,9 @@ int file_deltree(char *pszDirectoryName
 /*noverbatim
 CUT*/
   char buffer[MAX_FNLEN];
-#ifndef __MACOS__
   char *s;
 
   for( s = pszDirectoryName ; *s ; s++ )if( *s == '\\' )*s= '/';
-#endif
   if( ! file_exists(pszDirectoryName) )return -1;
   if( ! file_isdir(pszDirectoryName) )return -1;
   /* does not fit into the buffer ? */
@@ -984,39 +911,25 @@ CUT*/
   char *s;
   int iDirNameLen,i,iResult;
 
-#ifndef __MACOS__
   for( s=pszDirectoryName ; *s ; s++ )
     if( *s == '\\' )*s = '/';
-#endif
   iDirNameLen = strlen(pszDirectoryName);
 
   i = 0;
   iResult = 0;
   while( i < iDirNameLen ){
-#ifdef __MACOS__
-    while( pszDirectoryName[i] && pszDirectoryName[i] != ':' )i++;
-#else
     while( pszDirectoryName[i] && pszDirectoryName[i] != '/' )i++;
-#endif
     pszDirectoryName[i] = (char)0;
     if( file_exists(pszDirectoryName) ){
       if( ! file_isdir(pszDirectoryName) )
           return -1;/* the path exists and there is a non-directory sub-path in it*/
       else{
         iResult = 0;
-#ifdef __MACOS__
-        if( i < iDirNameLen ) pszDirectoryName[i] = ':';
-#else
         if( i < iDirNameLen ) pszDirectoryName[i] = '/';
-#endif
         }
       }else{
       iResult = file_mkdir(pszDirectoryName);
-#ifdef __MACOS__
-      if( i < iDirNameLen ) pszDirectoryName[i] = ':';
-#else
       if( i < iDirNameLen ) pszDirectoryName[i] = '/';
-#endif
       }
     i++;
     }
@@ -1510,9 +1423,6 @@ CUT*/
     return COMMAND_ERROR_CHOWN_SET_OWNER;
 
   return 0;
-#elif defined(__MACOS__)
-  /* Macintosh doesn't have file ownership */
-  return 0;
 #else
   struct passwd *pasw;
 
@@ -1578,15 +1488,6 @@ CUT*/
         *pszOwnerBuffer = (char)0;
       strcat(pszOwnerBuffer,Name);
       }
-    return 0;
-    }
-  return 1;
-#elif defined(__MACOS__)
-  /* Macintosh doesn't have file ownership */
-  char *owner = "Apple";
-  
-  if( strlen(owner) < cbOwnerBuffer ){
-    strcpy(pszOwnerBuffer,owner);
     return 0;
     }
   return 1;
@@ -2076,8 +1977,6 @@ CUT*/
   hProcess = OpenProcess(PROCESS_TERMINATE,0,(DWORD)pid);
   if( hProcess == NULL )return 1;
   if( TerminateProcess(hProcess,1) )return 0;
-  return 1;
-#elif defined(__MACOS__)
   return 1;
 #else
   return kill( (pid_t)pid,9);
@@ -2721,9 +2620,6 @@ CUT*/
                       &ProcInfo ) )return 0;
   CloseHandle(ProcInfo.hProcess);
   return ProcInfo.dwProcessId;
-#elif defined(__MACOS__)
-  /* Macintosh doesn't support starting a program with command line parameters */
-  return 0;
 #else
   char *pszMyCommandLine;
   char **argv;
@@ -2874,9 +2770,6 @@ CUT*/
   if( plExitCode )*plExitCode = ulExitCode;
   CloseHandle(ProcInfo.hProcess);
   return iError ? FILESYSE_NOCODE : FILESYSE_SUCCESS;
-#elif defined(__MACOS__)
-  /* Macintosh doesn't support starting a program with command line parameters */
-  return 0;
 #else
   char *pszMyCommandLine;
   char **argv;

@@ -31,7 +31,7 @@ TO_HEADER:
 #include "../../basext.h"
 #include "../../confpile.h"
 
-#if BCC32 || CYGWIN
+#if BCC32
 char *_pgmptr;
 #endif
 
@@ -77,7 +77,7 @@ SbData RetVale;*/
   _environ = env;
 #endif
 
-#if BCC32 || CYGWIN
+#if BCC32
   _pgmptr = argv[0];
 #endif
 

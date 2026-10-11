@@ -29,10 +29,6 @@ TO_HEADER:
 #include <winbase.h>
 #elif defined(__DARWIN__)
 #include <mach-o/dyld.h>
-#elif defined(__MACOS__)
-#include <string.h>
-#include <Files.h>
-#include <CodeFragments.h>
 #else
 #include <dlfcn.h>
 #endif
@@ -109,30 +105,6 @@ CUT*/
       fprintf( stderr, "%s", errorString );
       }
     }
-#elif defined(__MACOS__)
-    {
-    FSSpec fileSpec;
-    Str255 errMsg;
-    int err, slen;
-    Ptr mainAddr;
-    char *hasColon = strchr(s, ':');
-    pLib = NULL;
-    
-    /* Convert to Apple string (length + nonZ chars) */
-    slen = strlen(r);
-    memmove( r+1, r, slen);
-    *r=(unsigned char)slen;
-    
-    if( hasColon ){
-      err = FSMakeFSSpec (0, 0, r, &fileSpec);
-      if( err == noErr)
-        err = GetDiskFragment (&fileSpec, 0, 0, NULL, kLoadCFrag, (CFragConnectionID *)&pLib, mainAddr, errMsg );
-      }
-    else
-      err = GetSharedLibrary( r, kPowerPCCFragArch, kLoadCFrag, (CFragConnectionID *)&pLib, mainAddr, errMsg );
-    if( err < 0 && GlobalDebugDisplayFlag )
-      fprintf(stderr,"GetSharedLibrary error %d, message=%*s\n", err, *errMsg, errMsg+1);
-    }
 #else
   for( ;  *s ; s++ )
     if( *s == '\\' || *s == ':') *s = '/'; /* DOS/mac file separators -> unix */
@@ -163,9 +135,6 @@ CUT*/
   FreeLibrary((HMODULE)pLibrary);
 #elif defined(__DARWIN__)
   /* Can't unload a dylib on darwin */
-#elif defined(__MACOS__)
-  /* CloseConnection ( (CFragConnectionID *)&pLibrary ); */
-  /* This seems to cause the app to exit completely - probably something to do with SIOUX */
 #else
   dlclose(pLibrary);
 #endif
@@ -215,22 +184,6 @@ CUT*/
     return NULL;
     }
   return NSAddressOfSymbol(sym);
-#elif defined(__MACOS__)
-  {
-  Str255 str255;
-  void *symAdr = NULL;
-  CFragSymbolClass symClass;
-  int err;
-  
-  /* Convert to Apple string (length + nonZ chars) */
-  *str255 = (unsigned char)strlen(pszFunctionName);
-  memcpy( str255+1, pszFunctionName, *str255 );
-  
-  err = FindSymbol( (CFragConnectionID)pLibrary, str255, &symAdr, &symClass );
-  if( err < 0 && GlobalDebugDisplayFlag )
-    fprintf(stderr,"FindSymbol error %d: %s\n", err, pszFunctionName);
-  return symAdr;
-  }
 #else
   return dlsym(pLibrary,pszFunctionName);
 #endif

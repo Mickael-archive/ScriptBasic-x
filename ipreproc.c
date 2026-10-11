@@ -56,10 +56,8 @@ typedef struct _PreprocObject {
 #ifdef WIN32
 #include <process.h>
 #else
-#ifndef __MACOS__
 #include <sys/types.h>
 #include <sys/wait.h>
-#endif
 #endif
 
 #include "errcodes.h"
@@ -281,8 +279,6 @@ CUT*/
     pszDllExtension = ".dll";
 #elif defined(__DARWIN__)
     pszDllExtension = ".dylib";
-#elif defined(__MACOS__)
-    pszDllExtension = "";
 #else
     pszDllExtension = ".so";
 #endif

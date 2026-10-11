@@ -14,7 +14,7 @@
   );
 @ASCII = (
   'c','h','txt','h_bas','bat','lsp','heb','bas','pl','html','def','bas',
-  'mak','inc','ini','tpl','sh','sdd','jam','jim','cygwin','OSF','solaris','cmd','d-sbhttpd',
+  'mak','inc','ini','tpl','sh','sdd','jam','jim','OSF','solaris','cmd','d-sbhttpd',
   'fn','log','nt','cc','ssplit','pm','sb','tmpl','TXT','cpp','ziplist','exziplist',
   );
 

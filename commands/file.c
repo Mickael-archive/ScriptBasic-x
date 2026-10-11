@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#if (!defined(_WIN32) && !defined(__MACOS__))
+#if (!defined(_WIN32))
 #include <sys/file.h>
 #endif
 
@@ -36,7 +36,7 @@ File functions and commands
 
 This file contains the code for the commands and functions that deal with files.
 */
-#if (!defined(_WIN32) && !defined(__MACOS__))
+#if (!defined(_WIN32))
 int stricmp(char *,char*);
 #endif
 
@@ -93,11 +93,7 @@ static void prepare_directory(pExecuteObject pEo,char *pszFileName){
 
   s = pszFileName + (i=strlen(pszFileName)) -1;
   while( i ){
-#ifdef __MACOS__
-    if( *s == ':' ){
-#else
     if( *s == '/' || *s == '\\' ){
-#endif
       i = *s;
       *s = (char)0;
       HOOK_MAKEDIRECTORY(pszFileName);
@@ -1516,11 +1512,7 @@ NOTIMPLEMENTED;
   /* if the file is going into a directory that does not exist yet then try to create the directory */
   LastDSPos = 0;
   for( i=0 ; dfile[i] ; i++ )
-#ifdef __MACOS__
-    if( dfile[i] == ':' )LastDSPos = i;
-#else
     if( dfile[i] == '/' || dfile[i] == '\\' )LastDSPos = i;
-#endif
   if( LastDSPos ){
     i = dfile[LastDSPos];
     dfile[LastDSPos] = (char)0;
@@ -1801,19 +1793,11 @@ static int collect_dirs_r(pExecuteObject pEo,
   pLastResult = (pPatternParam)PARAMPTR(CMD_LIKEOP);
 
   dirlen=strlen(buffer);
-#ifdef __MACOS__
-  if( buffer[dirlen-1] != ':' ){
-    dirlen++;
-    if( dirlen >= MAX_FNLEN )return -1;
-    strcpy(buffer+dirlen-1,":");
-    }
-#else
   if( buffer[dirlen-1] != '/' ){
     dirlen++;
     if( dirlen >= MAX_FNLEN )return -1;
     strcpy(buffer+dirlen-1,"/");
     }
-#endif
   pDL = HOOK_OPENDIR(buffer,&DL);
   if( pDL == NULL )return -1;
   while( pD = HOOK_READDIR(pDL) ){
@@ -1924,19 +1908,11 @@ static int collect_dirs(pExecuteObject pEo,
   if( initialize_like(pEo) )return -1;
   memcpy(buffer,Directory,cDirectory);
   buffer[cDirectory] = (char)0;
-#ifdef __MACOS__
-  if( buffer[cDirectory-1] != ':' ){
-    cDirectory++;
-    if( cDirectory >= MAX_FNLEN )return -1;
-    strcpy(buffer+cDirectory-1,":");
-    }
-#else
   if( buffer[cDirectory-1] != '/' ){
     cDirectory++;
     if( cDirectory >= MAX_FNLEN )return -1;
     strcpy(buffer+cDirectory-1,"/");
     }
-#endif
   if( pattern )
     memcpy(puffer,pattern,c_pattern);
   puffer[c_pattern] = (char)0;

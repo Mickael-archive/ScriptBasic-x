@@ -94,7 +94,7 @@ typedef struct _tConfigTree {
 */
 #if _WIN32
 #include <windows.h>
-#if BCC32 || CYGWIN
+#if BCC32
 extern char *_pgmptr;
 #endif
 #endif

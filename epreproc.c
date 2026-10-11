@@ -28,10 +28,8 @@ TO_HEADER:
 #ifdef WIN32
 #include <process.h>
 #else
-#ifndef __MACOS__ /* No such thing as command line parameters on classic Mac */
 #include <sys/types.h>
 #include <sys/wait.h>
-#endif
 #endif
 
 #include "errcodes.h"
@@ -127,7 +125,7 @@ CUT*/
   char **ppszPreprocessor = ppszArgPreprocessor;
   int iPreprIndex,i;
   char *pszLastFileName;
-#if (!defined(WIN32) && !defined(__MACOS__))
+#if (!defined(WIN32))
   pid_t pid;
   int exit_code;
 #endif
@@ -288,8 +286,6 @@ CUT*/
       alloc_FinishSegment(pMemorySegment);
       return PREPROC_ERROR_FAIL;
       }
-#elif defined(__MACOS__)
-    return PREPROC_ERROR_FAIL;
 #else
     if( ! (pid = fork()) ){
       /* we are the child process */

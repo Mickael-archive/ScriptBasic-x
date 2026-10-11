@@ -44,9 +44,6 @@
 #ifdef WIN32
 #define index  strchr
 #endif
-#ifdef __MACOS__
-#define index  strchr
-#endif
 
 /*FUNCTION*/
 char getoptt(int argc, 

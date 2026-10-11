@@ -31,7 +31,7 @@ extern "C" {
 
 
 
-#if (defined(_WIN32) || defined(__MACOS__))
+#if (defined(_WIN32))
 #ifdef __cplusplus
 #define DLL_EXPORT extern "C" __declspec(dllexport)
 #else

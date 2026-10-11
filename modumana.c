@@ -422,8 +422,6 @@ CUT*/
     pszDllExtension = ".dll";
 #elif defined(__DARWIN__)
     pszDllExtension = ".dylib";
-#elif defined(__MACOS__)
-    pszDllExtension = "";
 #else
     pszDllExtension = ".so";
 #endif
@@ -458,15 +456,9 @@ CUT*/
   /* load the module into process space */
   s = (*ThisModule)->pszModuleName;
 
-#ifdef __MACOS__
-  /* On Mac, an absolute path begins with no colon, and has colons in it.
-     We treat as a relative path anything starting with a colon or having no colons at all */
-  if( *s != ':'  && strchr(s, ':')){
-#else
   if( *s == '/' ||
       *s == '\\' ||/* If the user is perverted enough to name a file C:/ under UNIX then he deserves the consequences */
       ( s[1] == ':' && (s[2] == '\\' || s[2] == '/') )         ){
-#endif
     /* this is absolute path, do not prepend or append anything */
     (*ThisModule)->ModulePointer = dynlolib_LoadLibrary( s );
     if( (*ThisModule)->ModulePointer == NULL )return COMMAND_ERROR_MODULE_LOAD;
@@ -548,12 +540,6 @@ CUT*/
       if( (*ThisModule)->ModulePointer != NULL )break;
     break;
     }
-#endif
-#ifdef __MACOS__
-    if( (*ThisModule)->ModulePointer == NULL ){ /* Let MacOS see if it can find it */
-      strcpy(s,(*ThisModule)->pszModuleName);
-      (*ThisModule)->ModulePointer = dynlolib_LoadLibrary( s );
-      }
 #endif
     if( (*ThisModule)->ModulePointer == NULL )return COMMAND_ERROR_MODULE_LOAD;
 

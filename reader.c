@@ -100,7 +100,7 @@ in any other data holding space you can support these routines with character fe
 
 CUT*/
 
-#if (!defined(_WIN32) && !defined(__MACOS__))
+#if (!defined(_WIN32))
 int strnicmp(char *a, char *b, int n){
   char ca,cb;
 
@@ -789,11 +789,6 @@ CUT*/
   long lLen;
   char *pszBuffer,*s,*r,*q;
 
-#ifdef __MACOS__
-#define ischardsep(s) ((s) == ':')
-
-  if( !ischardsep(*pszRelativeFile)
-#else
 
   /* note that \\ is a valid directory separator in scriba include statement 
      on UNIX as well, because stupid DOS programmers may use it and their code
@@ -806,7 +801,6 @@ CUT*/
        (laughing) */
       || pszRelativeFile[1] == ':'
 #endif
-#endif
       ){
     /* this is an absolute file name */
     lLen = strlen(pszRelativeFile)+1;
@@ -816,7 +810,6 @@ CUT*/
       return NULL;
       }
     strcpy(pszBuffer,pszRelativeFile);
-#ifndef __MACOS__
     /* this code aids brain dead DOS programmers using \ as directory
        separator to run their code on UNIX. */
     s = pszBuffer;
@@ -824,7 +817,6 @@ CUT*/
       if( *s == '\\' )*s = '/';
       s++;
       }
-#endif
     return pszBuffer;
     }
 
@@ -858,7 +850,6 @@ CUT*/
       }else
       s = r+1;
     }
-#ifndef __MACOS__
   /* this code aids brain dead DOS programmers using \ as directory
      separator to run their code on UNIX. */
   s = pszBuffer;
@@ -866,7 +857,6 @@ CUT*/
     if( *s == '\\' )*s = '/';
     s++;
     }
-#endif
   return pszBuffer;
   }
 

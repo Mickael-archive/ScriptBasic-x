@@ -52,7 +52,7 @@ TO_HEADER:
 // Gavin Jenkins [gavinjenkins@inform-comms.co.uk]
 // use -DSTATIC_LINK=1 in case you want to link the module to ScriptBasic
 // statically. Though this is experimental.
-#if (defined(_WIN32) || defined(__MACOS__))
+#if (defined(_WIN32))
 # if STATIC_LINK
 #  ifdef __cplusplus
 #   define DLL_EXPORT extern "C" static

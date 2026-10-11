@@ -30,7 +30,7 @@ TO_HEADER:
 #include "../../basext.h"
 #include "../../confpile.h"
 
-#if BCC32 || CYGWIN
+#if BCC32
 char *_pgmptr;
 #endif
 
@@ -71,9 +71,6 @@ main(int argc, char *argv[], char *env[]){
   long lOffset,lEOFfset;
   char *realArgv0;
 
-#ifdef __MACOS__
-  argc = ccommand(&argv);
-#endif
 
 /*pSbData p,psb;
 SbData RetVale;*/
@@ -81,7 +78,7 @@ SbData RetVale;*/
   _environ = env;
 #endif
 
-#if BCC32 || CYGWIN
+#if BCC32
   _pgmptr = argv[0];
 #endif
 

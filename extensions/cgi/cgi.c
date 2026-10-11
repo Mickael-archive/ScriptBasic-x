@@ -150,7 +150,7 @@ typedef struct _CgiObject {
 
 #define _getenv(X) (pCO->pfEnv ? pCO->pfEnv(pCO->pEmbed,(X),0) : getenv(X))
 
-#if (!defined(_WIN32) && !defined(__MACOS__))
+#if (!defined(_WIN32))
 static int stricmp(char *a, char *b){
   char ca,cb;
 
