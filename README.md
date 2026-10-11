@@ -1,15 +1,11 @@
-ScriptBasic
-===========
+ScriptBasic-x
+=============
 
-The original source repository for the classic ScriptBasic interpreter as or www.scriptbasic.com
+This repo is a fork and a rewrite of the original source repository for the classic ScriptBasic interpreter as or www.scriptbasic.com
+The original project is not maintained any more by the original author.
 
-This project is not maintained any more by the original author.
+goal is the move the source to C23 and compile with Zig CC.
 
-There is an active community at
+Action plan will follow soon. (today 11-of-october-2026)
 
-https://www.scriptbasic.org/forum/
-
-and there is a repository with later additions, patches whatnots at:
-
-https://sandbox.allbasic.info:8181/scriptbasic/sb-dev/tree/master
-
+Mickael CALA
