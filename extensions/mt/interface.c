@@ -669,7 +669,7 @@ besFUNCTION(setsvariable)
 
   if( (*p)->vV && TYPE((*p)->vV) == VTYPE_STRING && STRINGVALUE((*p)->vV) ){
     pSt->Free(STRINGVALUE((*p)->vV),pS->pMemSeg);
-    STRINGVALUE((*p)->vV) = NULL;
+    (*p)->vV->Value.pValue = NULL;
     }
 
   /* we do not need memory to store undef */
@@ -842,8 +842,8 @@ besFUNCTION(setmtvariable)
 
   /* release the old value because we are going to replace that anyway */
   if( (*p)->vV && TYPE((*p)->vV) == VTYPE_STRING && STRINGVALUE((*p)->vV) ){
-    besPROCFREE(STRINGVALUE((*p)->vV));
-    STRINGVALUE((*p)->vV) = NULL;
+    pSt->pEo->pSTI->Free(STRINGVALUE((*p)->vV),besPROCMEMORYSEGMENT);
+    (*p)->vV->Value.pValue = NULL;
     }
 
   /* we do not need memory to store undef */

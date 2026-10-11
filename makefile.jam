@@ -88,6 +88,9 @@ syntax.c : syntax.def
 lmt_none.c : lmt_none.def
 	perl lmt_make.pl $?
 
+lmt_httpd.c : lmt_httpd.def
+	perl lmt_make.pl $?
+
 {@comment ------------------------------------------------------------
 
  Main OBJECT files
@@ -189,4 +192,15 @@ lmt_none.c : lmt_none.def
 
 {MainObj lmt_httpd} : lmt_httpd.c
 	{cc} {CcOptCompile} {CcOptOutput {MainObj lmt_httpd}} lmt_httpd.c
+
+{@comment ------------------------------------------------------------
+
+ Link the httpd server with the statically linked modules cgi and mt
+ (the Eszter SB Application Engine). This has to run after the modules
+ have been compiled, therefore it is a separate target that setup.pl
+ invokes at the end of the generated 'compile' script.
+
+---------------------------------------------------------------------}
+eszter : {MainExe sbhttpd} {MainObj lmt_httpd} {CreLib cgi} {CreLib mt}
+	{cc} {LdOptOutput {MainExe sbhttpd}} {VarObj websrv} {VarObj service} {MainObj lmt_httpd} {CreLib cgi} {CreLib mt} {MainLib lscriba} {StandardLibraries}
 

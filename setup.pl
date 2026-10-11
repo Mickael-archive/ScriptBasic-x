@@ -521,6 +521,10 @@ if( $unix ){
     print F "cd ..\n";
     }
   print F "cd ..\n";
+  print F "if [ -e bin/mod/lib/cgi.a ] && [ -e bin/mod/lib/mt.a ]\n";
+  print F "then\n";
+  print F "  make -f bin/make/Makefile eszter\n";
+  print F "fi\n";
   close F;
   chmod(0700,"compile");
   if( ! $OPT{'--no-compile'} ){
