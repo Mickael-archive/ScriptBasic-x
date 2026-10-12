@@ -72,6 +72,19 @@ for name in "$@" ; do
     continue
     fi
 
+  # The command reference chapter of the User Guide is commands.texi, made out
+  # of the documentation blocks of the commands/ sources by mkcdoc (the C port
+  # of mkcdoc.pl).  It is written into the top directory, where the
+  # <%#include ../commands.texi%> of texi/ug.texi.jam looks for it.
+  if [ "$name" = ug ] ; then
+    if [ -x "$top/bin/tools/mkcdoc" ] ; then
+      ( cd "$top" && ./bin/tools/mkcdoc --texi commands.texi ) || \
+        echo "###WARNING ug: the command reference could not be created"
+    else
+      echo "###WARNING ug: bin/tools/mkcdoc is missing, run ./setup first."
+      fi
+    fi
+
   # The documents that cannot be complete in this source tree, and why.  They
   # are built anyway, the missing part is reported as it was before.
   case $name in
@@ -86,7 +99,7 @@ for name in "$@" ; do
       if [ ! -f "$top/commands.texi" ] ; then
         echo "###WARNING ug: commands.texi is missing, so the command reference"
         echo "###WARNING ug: chapter comes out empty.  It is generated from the"
-        echo "###WARNING ug: commands/*.c files by mkcdoc.pl (Perl)."
+        echo "###WARNING ug: commands/ sources by bin/tools/mkcdoc."
         fi;;
     auxfiles)
       for f in install.sh mkdeb.sh ; do

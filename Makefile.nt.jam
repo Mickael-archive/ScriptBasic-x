@@ -67,7 +67,8 @@ clean:
 #     cd tools\codegen  &&  make
 #
 # Any C compiler supporting C99 can build them; the executables are
-# bin\tools\generrh.exe, headerer.exe, lmt_make.exe and syntaxer.exe.
+# bin\tools\generrh.exe, headerer.exe, lmt_make.exe, syntaxer.exe and
+# mkscribadef.exe.
 #
 # --------------------------------------------------------------------
 headers : *.c extensions/cgi/cgi.c errcodes.c extensions/rpool.c syntax.c notimp.c
@@ -106,8 +107,8 @@ doc : *.c modules.sdd scriba.sdd
 scriba.dll : $(OBJS) $(COBJS) lmt_none.obj scriba.def
 	$(LD) $(LDOPTIONS) /Fescriba.dll $(OBJS) $(COBJS) $(LIBS) lmt_none.obj /link /DEF:scriba.def 
 
-scriba.def : scriba.c
-	perl mkscribadef.pl
+scriba.def : scriba.c bin\tools\mkscribadef.exe
+	bin\tools\mkscribadef.exe
 
 #
 # LIB same as DLL just link statically

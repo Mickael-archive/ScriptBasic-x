@@ -408,24 +408,100 @@ writes `install.sh`, `mkdeb.sh` and `mkrpm.sh` with mode 0500, and a second
 `./setup --install` in the same tree dies on "Can not write mkdeb.sh" - remove
 the generated scripts first.
 
+## The command reference of the User Guide, and the export definition file
+
+Two more Perl programs of the documentation chain are C now, and both of them
+were wired into a build that ran Perl before.
+
+**`mkcdoc.pl` → `tools/codegen/mkcdoc.c`.** The documentation of every command
+of the language is in the C sources of the `commands/` directory, in comments
+that open with the name of the command and carry the directives `=section`,
+`=title`, `=subtitle` and `=display`; the rest of the comment is the
+documentation of the command, and `=details`, `=verbatim` and `=itemize` inside
+it say how it is to be laid out. `mkcdoc` walks that directory and writes two
+things out of it: `commands.texi`, the "Command reference" chapter of the User
+Guide, and the HTML pages of the old web site (`commands.html` and one page for
+every command that has a `=details` line).
+
+`texi/ug.texi.jam` includes `../commands.texi`, and that file was not in the
+tree, so `./mkth.sh all` told the reader that the chapter was missing and the
+User Guide came out without its command reference.  `./mkth.sh` writes the file
+with `bin/tools/mkcdoc` before it builds `ug` now, and no warning is left: the
+chapter is 289 `@section` entries, `bin/texi/ug.texi` is 396 857 bytes with it
+against the 258 623 of the guide without a command reference, and the
+`mkcdoc.cmd` of the Windows side runs the C program too.
+
+*Checked:* run in a copy of `commands/`, the port writes the same thing as the
+Perl program.  `commands.texi` is the chapter of the Perl with the CR taken off
+(the Perl writes 139 434 bytes with 1 497 CR in them, the port 138 234 without a
+CR), and after that the two differ in 53 lines: three are the places where the
+sources use `B<...>` and `I<...>` and the Perl leaves the closing `>` of its own
+pattern in the output (`@b{empty}>`, `@b{after}>`, `@emph{root}>`), and fifty are
+the places where a `R<...>` reference names another command: `$DISPLAY{$name}` is
+looked up with the name of the command, and the keys of that table carry the CR
+in the Perl, so the lookup never finds anything on UNIX and the reference is
+printed as "COS" while the port prints the display of the command, "COS()", the
+way the same program does on Windows.  `commands.html` differs in the same fifty
+lines only, and the fifteen detail pages of the two are identical after the CR
+of the Perl is taken off their text; their *names* differ, because the Perl names
+them "ABS" with a CR before the .html and the port names them "ABS.html".
+
+**`mkscribadef.pl` → `tools/codegen/mkscribadef.c`.** `scriba.def`, the export
+definition file of the library for the Windows link of the DLL, is the list of
+the functions of `scriba.c`: every comment that holds the word `FUNCTION` is
+followed by the declaration of a function, and the name of it is the second word
+of that line.  `Makefile.nt.jam` calls `bin\tools\mkscribadef.exe` for it now
+instead of the Perl script, and the generated file is in `.gitignore`.
+
+*Checked:* `scriba.def` from the port and from the Perl are the same 69 lines for
+the same `scriba.c`, byte for byte.
+
+The documentation chain of the two is otherwise untouched: with the *same*
+`commands.texi` the C tools and the Perl tools build `bin/texi/ug.texi` byte for
+byte the same 398 057 bytes, so the fifty lines above are the whole difference
+that the port makes in the User Guide.  `./mkth.sh all` runs without Perl and
+reports the two missing `install.sh` and `mkdeb.sh` of the `auxfiles` document
+only; the command reference warning of `ug` is gone.
+
 ## Build files that still call Perl
 
-Only code that has not been ported yet, or historical documents:
+What the build runs: nothing.  What is left in the tree:
 
 * `setup.pl` is the Perl driver of the build. It is no longer the entry point
   (`./setup` runs the C driver, see above) and the build does not need it, but it
   still works and drives the same C tools, so it is kept next to the C port.
-* the reference originals `jamal.pl`, `t2h.pl` and `esd.pm` (the build uses the
-  C ports, see above), `scriba-tar.pl`, `scriba-zip.pl`, `scriba-rpm.pl` and
-  `preparedeb.pl` (the release is made without them, see above), and the rest
-  of the documentation chain: `esd2html.pl`, `esd2texi.pl`, `esd2any.pl`,
-  `esdcnv.pl`, `ssplit.pl`, `mkweb.pl`, `mkcdoc.pl`, `mkscribadef.pl`,
-  `moduletablemaker.pl`, `statltmaker.pl`, `lmt_help.pl`, `heber.pl`,
-  `convert.pl`.
-* The `.cmd` command files that drive them, `mkth*.cmd`, `mktexihtml.cmd`,
-  `mkweb.cmd`, `mkcdoc.cmd`, `mksamples.cmd`, `modconfigure.cmd`, `setup.cmd`.
-* `Makefile.nt.jam` no longer uses Perl for the code generators, but it still
-  runs `perl esd2html.pl` (source documentation) and `perl mkscribadef.pl`
-  (the export definition file), neither of which is ported yet.
+* The reference originals of everything that was ported: `jamal.pl`, `t2h.pl`
+  and `esd.pm`, then `scriba-tar.pl`, `scriba-zip.pl`, `scriba-rpm.pl`,
+  `preparedeb.pl` (the release is made without them), `mkcdoc.pl` and
+  `mkscribadef.pl` (see above).
+* Dead relics whose input left the tree, none of which any makefile of this tree
+  calls any more:
+  * `esd2html.pl`, the source documentation to HTML converter: it is a general
+    purpose program that reads an `.sdd` description file, and there is no
+    `.sdd` file in this tree nor in its history.  The `doc` target of
+    `Makefile.nt.jam` is the only place that calls it (`modules.sdd`,
+    `scriba.sdd`).
+  * `ssplit.pl` and `mkweb.pl`, which made the web site out of
+    `html/source.txt`: that harness is in `OLD/html/` (see above), and `mkweb.pl`
+    runs `..\jamal.pl` on a Windows path.
+  * `convert.pl`, `convert.sh` and `uncr`, the helpers that converted files of a
+    release between the CR/LF conventions when they were uploaded.
+  * `heber.pl`, a sample external preprocessor of ScriptBasic (HTML embedded
+    Basic to BASIC), not a program of the build.
+* The six scripts `esd2texi.pl`, `esd2any.pl`, `esdcnv.pl`,
+  `moduletablemaker.pl`, `statltmaker.pl` and `lmt_help.pl` were named by this
+  section before; they are in `OLD/` with the other archives of the dead Perl,
+  not in the tree.
+* The `.cmd` command files: `mkcdoc.cmd`, `modconfigure.cmd` and `setup.cmd` run
+  the C tools now (`bin\tools\mkcdoc`, `bin\tools\jamal.exe`,
+  `bin\tools\setup.exe`).  `mkth.cmd`, `mkthl.cmd`, `mkthm.cmd`,
+  `mktexihtml.cmd`, `mksamples.cmd` and `mkweb.cmd` still call Perl and assume
+  the `html\texi` harness of the old document build, which is in `OLD/html/`:
+  they are the Windows side of the documentation flow of that harness, and the
+  port of the driver of this tree is `mkth.sh`.  A Windows machine would be
+  needed to write and test their replacement, so they are left as they are.
+* `Makefile.nt.jam` no longer uses Perl for the code generators or for
+  `scriba.def`; only its `doc` target calls `perl esd2html.pl` with the two
+  `.sdd` files that do not exist.
 * `html/source.txt` (historical web source) still names `syntaxer.pl`.
 * `setup.log` is a committed build log from 2013, before the C tools existed.

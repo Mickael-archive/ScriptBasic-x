@@ -2,7 +2,7 @@
 
 Read this file only if you are curious. Just run
 
-                perl setup.pl --help
+                ./setup --help
 
 and that will tell you all.
 ----------------------------------------------------------------------------------------
@@ -11,15 +11,15 @@ Jamal source for the makefile to compile ScriptBasic core code.
 To get the actual makefile you have to process this file using the macro processor Jamal
 with the actual macro package containing the macro defintion for the compiler. Thus
 
-             perl jamal.pl -m make_vc7.jim makefile.jam makefile.vc7
+             bin/tools/jamal -m make_vc7.jim makefile.jam makefile.vc7
 
 to get the Visual C++ v7.0 specific make file,
 
-             perl jamal.pl -m make_bcc.jim makefile.jam makefile.bcc
+             bin/tools/jamal -m make_bcc.jim makefile.jam makefile.bcc
 
 to get the Borland bcc compiler specific make file,
 
-             perl jamal.pl -m make_gcc.jim makefile.jam makefile
+             bin/tools/jamal -m make_gcc.jim makefile.jam makefile
 
 to get the GNU C compiler specific make file under UNIX/Linux.
 
