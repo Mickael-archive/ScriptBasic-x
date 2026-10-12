@@ -73,9 +73,10 @@ Evidence, against the Perl originals on the same input:
 
 | Check | Result |
 |-------|--------|
-| the 48 `*.texi.jam` inputs (26 guides under `texi/`, 22 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | output file, stdout and exit status identical, byte for byte |
+| the 47 `*.texi.jam` inputs (26 under `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | output file, stdout and exit status identical, byte for byte |
 | the `esd` substitution engine: every `esd::command` of the tree, applied to 4 516 lines of the real documentation | 126 448 substitutions, all identical |
-| the 48 documents produced above through `perl t2h.pl` vs `bin/tools/t2h` | 1 721 of the 1 722 output files identical |
+| the 47 documents produced above through `perl t2h.pl` vs `bin/tools/t2h` | 2 225 of the 2 226 output files identical |
+| a whole `./setup --unix` build of the tree, once driven by `bin/tools/setup` and once by `perl setup.pl` | 1 020 files on either side, all identical except `scriba`, `scribacmd.o` and `setup.log`, which carry the compilation time |
 
 Differences, all of them places where the Perl original depends on the
 unordered iteration of a hash:
@@ -83,14 +84,50 @@ unordered iteration of a hash:
 | Feature | Behaviour |
 |---------|-----------|
 | order of the `esd::command` substitutions | `esd.pm` keeps them in a hash and applies them in `keys %COMMAND` order, which is a different order on every run of the same Perl; this port applies them sorted by key, the order the shipped `*.texi.jam` files are written for |
-| order of the `.hhk` index entries | `t2h.pl` writes them in hash order too; the port writes them sorted. This is the single file of the 1 722 that is not byte identical, and the original cannot even be compared with itself: two runs on the same input produce two different files |
+| order of the `.hhk` index entries | `t2h.pl` writes them in hash order too; the port writes them sorted. This is the single file of the 2 226 that is not byte identical, and the original cannot even be compared with itself: two runs on the same input produce two different files |
 | Perl regular expressions in `{#esd::command ...}` | only the subset the shipped files use is understood -- literals, escapes, `.`, `^`, `$`, character classes, groups, lazy quantifiers, the `g` flag. Anything else is reported as an unsupported command instead of being silently mis-applied |
 
-A gap that is **not** from this port: `extensions/*/manual.texi.jam` include
-`../../html/texi/skeleton.jim`, a file that does not exist in the tree (nor in
-the history), so those 15 module manuals come out empty. `perl jamal.pl` prints
-the same "cannot be opened" message and writes the same empty file, which is why
-the comparison above passes; the module manual pages need that include fixed.
+### The module manual pages
+
+`extensions/*/manual.texi.jam` (16 of the 20) asked for
+`../../html/texi/skeleton.jim`, a file that exists neither in the tree nor in its
+history, so those pages came out empty; `perl jamal.pl` printed the same "cannot
+be opened" message and wrote the same empty file. The one skeleton the tree has is
+`texi/skeleton.jim`: it is what `texi/mod_*.texi.jam` include, and what `setup.pl`
+copies into a module it creates. The 16 includes, and the two places that generate
+them (`setup.pl` and the `%SKELETONS` table of `tools/codegen/setup_data.h`), now
+name `../../texi/skeleton.jim`.
+
+That alone would not have been enough. `esd::include` reads the module source,
+keeps the lines between its two markers and compares those markers with a plain
+`eq` after `chomp`; the `extensions/*/interface.c` files are CRLF, and `chomp`
+takes off the LF only. The marker line is `"/**\r"`, `eq "/**"` is false for it,
+and the whole file is thrown away: `esd.pm` only ever worked where Perl reads its
+files in text mode, on Windows. `esd.pm` and its port now both drop the CR, so the
+reader behaves the same on either platform.
+
+Measured on the 47 documents, one side at a time: 14 of them change, all from an
+empty page to the real one -- `esd.texi.jam` 44 bytes to 49 744, and the 13 module
+manuals whose source has a `/**` block (`curl` 455 to 46 683, `cgi` 452 to
+19 937, `mt` 449 to 12 413, ...). The three modules whose sources carry no such
+block (`hash`, `psql`, `trial`) are unchanged, and so are the other 33 documents.
+`./setup --unix` now writes the real pages into `bin/texi/mod_*.texi`, and the
+html pages next to them.
+
+Fixing that exposed a defect in the `t2h` port that the empty pages had hidden:
+the port kept one empty field where Perl's `split /\n/` drops the empty fields at
+the end of a list, so every page of a document whose body ends on a blank line was
+one byte longer (the `<HR>` separator pushed onto a line of its own). It is fixed,
+and the two implementations agree again on every page.
+
+One documentation path is still broken, deliberately untouched: `texi/mod_*.texi.jam`
+are not what `make` builds (that is `extensions/*/manual.texi.jam`), they are the
+input of the separate `mkth.sh` / `mkath.cmd` run, and 13 of the 17 name a source
+that is not in the tree (`extensions/cgi/cginterf.c`, `extensions/ux/ux.c`,
+`extensions/zlib/zlbintrf.c`, ...).  `md5` and `tools` are modules that no longer
+exist at all, the other four (`bdb`, `gd`, `hash`, `mysql`) carry their text
+instead of an include.  Repointing the eleven whose module still exists is
+mechanical, the two orphans need a decision.
 
 ## The setup program
 
@@ -134,7 +171,11 @@ module files, the installation defaults and every shell and configuration
 template - lives in `tools/codegen/setup_data.h` and
 `tools/codegen/setup_text.h`. Both are checked in, so the build needs no Python;
 `tools/codegen/extract_setup_data.py` regenerates them from `setup.pl`, and has
-to be run again only when the texts change there.
+to be run again only when the texts change there. It had one trap: it emits the
+`SETUP_HD` entries in the order they appear in `setup.pl`, while `setup.c` names
+them by index, and the table that was checked in followed the order `setup.c`
+expects, so re-running the command silently renumbered the messages. The entries
+are named by the current order now, which makes the command idempotent again.
 
 The shell script `setup` had two defects of its own, fixed along the way: it was
 not executable (mode 644, so `make all` could not run it) and its CRLF line

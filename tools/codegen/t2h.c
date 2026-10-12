@@ -818,6 +818,10 @@ static char *body_text(const char *body)
         vec_push(lns, xmemdup(p, n));
         p += n + (nl ? 1 : 0);
     }
+    /* Perl's `split /\n/` throws the empty fields at the end of the list away,
+     * so a body that ends on a blank line does not keep a trailing newline. */
+    while (lns->n > 0 && lns->v[lns->n - 1][0] == '\0')
+        free(lns->v[--lns->n]);
     Vec *plns = vec_new();
     for (int i = 0; i < lns->n; i++) {
         const char *line = lns->v[i];

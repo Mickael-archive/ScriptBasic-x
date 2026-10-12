@@ -2563,7 +2563,7 @@ END
 
 [[[#define MODULE=$module]]]
 [[[#define FILE=interface.c]]]
-[[[#include ../../html/texi/skeleton.jim]]]
+[[[#include ../../texi/skeleton.jim]]]
 END
 
 );

@@ -62,6 +62,9 @@ sub include {
   open(F,$FileName) or die "Can not open $FileName";
   while( <F> ){
     chomp;
+    # jamal's original text-mode read: a CRLF source must not keep the CR,
+    # otherwise the /** ... */ markers below never match.
+    s/\r$//;
     if( $sw == 0 && $_ eq $StartString ){
       $sw = 1;
       next;

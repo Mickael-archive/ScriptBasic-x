@@ -2376,6 +2376,9 @@ static char *esd_include(const char *arg, const char *body)
         size_t seglen = nl ? (size_t)(nl - q) : strlen(q);
         char *line = xmemdup(q, seglen);          /* chomp */
         q += seglen + (nl ? 1 : 0);
+        /* esd.pm reads the file in text mode: a CRLF source must lose the CR,
+         * otherwise the start and stop markers below never match. */
+        if (seglen > 0 && line[seglen - 1] == '\r') line[seglen - 1] = '\0';
         if (sw == 0 && strcmp(line, start) == 0) { sw = 1; free(line); continue; }
         if (sw == 1 && strcmp(line, stop) == 0)  { sw = 0; free(line); continue; }
         char *sub = esd_apply_commands(line);

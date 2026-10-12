@@ -573,10 +573,10 @@ static int   MAXLEVEL = 0;
 
 /* the templates of setup_text.h, by the line they come from in setup.pl */
 #define HD_SETUP_INTRO       SETUP_HD[0]
-#define HD_ESD_MISSING       SETUP_HD[1]
-#define HD_ZIP_DONE          SETUP_HD[2]
-#define HD_INSTALL_UNIX      SETUP_HD[3]
-#define HD_INSTALL_NT        SETUP_HD[4]
+#define HD_ZIP_DONE          SETUP_HD[1]
+#define HD_INSTALL_UNIX      SETUP_HD[2]
+#define HD_INSTALL_NT        SETUP_HD[3]
+#define HD_ESD_MISSING       SETUP_HD[4]
 #define HD_CORE_NOTE         SETUP_HD[5]
 #define HD_MAKEFILE_JAM      SETUP_HD[6]
 #define HD_IUS_DIR           SETUP_HD[7]
