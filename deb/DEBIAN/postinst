@@ -1,0 +1,3 @@
+#!/bin/sh
+rm -rf /etc/scriba/cache/*
+exit 0

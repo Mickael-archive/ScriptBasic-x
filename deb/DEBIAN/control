@@ -1,0 +1,5 @@
+Package: scriba
+Version: 2.0.0-1
+Architecture: i386
+Description: ScriptBasic interpreter
+Maintainer: Peter verhas <peter@verhas.com>
