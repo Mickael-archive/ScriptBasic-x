@@ -399,32 +399,45 @@ if( ! $OPT{'--no-mkdir'} ){# default is to create the subdirs
     }
   }
 
-if( ! $OPT{'--no-makefile'} ){# default is to create the makefiles
-  print "compiling Makefile using the Jamal preprocessor\n";
-  if( $unix eq "unix" ){
-    &logit("perl jamal.pl -m make_gcc.jim makefile.jam bin/make/Makefile");
-    `perl jamal.pl -m make_gcc.jim makefile.jam bin/make/Makefile`;
-    }
-  elsif( $unix eq "darwin" ){
-    &logit("perl jamal.pl -m make_darwin.jim makefile.jam bin/make/Makefile");
-    `perl jamal.pl -m make_darwin.jim makefile.jam bin/make/Makefile`;
-    }
-else{
-    # compile the makefiles from source (note that directory.jim is ready already)
-    &logit("perl jamal.pl -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile");
-    `perl jamal.pl -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile`;
-    &logit("perl jamal.pl -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile");
-    `perl jamal.pl -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile`;
-    # compile the packing cmd file. It needs Jamal to have the version and build correctly
-    #&logit("perl jamal.pl pack.cmd.jam pack.cmd");
-    #`perl jamal.pl pack.cmd.jam pack.cmd`
-    }
-  }
-
 if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them first
   print "building the C code generator tools in tools/codegen\n";
   &logit("make -C tools/codegen");
   system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
+  }
+
+
+#
+# The Jamal preprocessor is a C program now (tools/codegen/jamal.c).  The Perl
+# original is kept for the documentation files that use the esd extension
+# module, which a C program cannot load, and it is used as a fallback when the
+# C tool has not been built.
+#
+$jamal = $unix eq "nt" ? "bin\\tools\\jamal.exe" : "bin/tools/jamal";
+unless( -e $jamal ){
+  print "The jamal tool '$jamal' is not built, falling back to perl jamal.pl\n";
+  $jamal = "perl jamal.pl";
+  }
+
+if( ! $OPT{'--no-makefile'} ){# default is to create the makefiles
+  print "compiling Makefile using the Jamal preprocessor\n";
+  if( $unix eq "unix" ){
+    &logit("$jamal -m make_gcc.jim makefile.jam bin/make/Makefile");
+    `$jamal -m make_gcc.jim makefile.jam bin/make/Makefile`;
+    }
+  elsif( $unix eq "darwin" ){
+    &logit("$jamal -m make_darwin.jim makefile.jam bin/make/Makefile");
+    `$jamal -m make_darwin.jim makefile.jam bin/make/Makefile`;
+    }
+else{
+    # compile the makefiles from source (note that directory.jim is ready already)
+    &logit("$jamal -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile");
+    `$jamal -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile`;
+    &logit("$jamal -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile");
+    `$jamal -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile`;
+    # compile the packing cmd file. It needs Jamal to have the version and build correctly
+    #&logit("perl jamal.pl pack.cmd.jam pack.cmd");
+    #`perl jamal.pl pack.cmd.jam pack.cmd`
+    }
   }
 
 if( ! $OPT{'--no-syntaxer'} ){# default is to run the syntaxer tool
@@ -827,19 +840,19 @@ sub configure_module {
   # no reason to run the preprocessing
   if( $unix eq "unix" ){
     print "Processing jamal files creating makefile\n";
-    `perl jamal.pl -m make_gcc.jim extensions/$module/makefile.jam extensions/$module/makefile`
+    `$jamal -m make_gcc.jim extensions/$module/makefile.jam extensions/$module/makefile`
        unless -e "extensions/$module/notunix.txt";
     }
   elsif( $unix eq "darwin" ){
     print "Processing jamal files creating makefile\n";
-    `perl jamal.pl -m make_darwin.jim extensions/$module/makefile.jam extensions/$module/makefile`
+    `$jamal -m make_darwin.jim extensions/$module/makefile.jam extensions/$module/makefile`
        unless -e "extensions/$module/notdarwin.txt";
     }else{
     print "Processing jamal files creating makefile.vc7\n";
-    `perl jamal.pl -m make_vc7.jim extensions/$module/makefile.jam extensions/$module/makefile.vc7`
+    `$jamal -m make_vc7.jim extensions/$module/makefile.jam extensions/$module/makefile.vc7`
        unless -e "extensions/$module/notnt.txt";
     print "Processing jamal files creating makefile.bcc\n";
-    `perl jamal.pl -m make_bcc.jim extensions/$module/makefile.jam extensions/$module/makefile.bcc`
+    `$jamal -m make_bcc.jim extensions/$module/makefile.jam extensions/$module/makefile.bcc`
        unless -e "extensions/$module/notnt.txt";
     }
 

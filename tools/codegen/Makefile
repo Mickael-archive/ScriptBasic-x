@@ -1,10 +1,11 @@
-# Build the C code generators - replacements for the Perl scripts.
+# Build the C code generators and the Jamal preprocessor - replacements for
+# the Perl scripts.
 # GCC 13 accepts -std=c2x (the C23 draft); GCC 14+ also accepts -std=c23.
 CC     ?= gcc
 CFLAGS ?= -std=c2x -O2 -Wall -Wextra
 BIN    := ../../bin/tools
 
-all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer
+all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer $(BIN)/jamal
 
 $(BIN)/lmt_make: lmt_make.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
@@ -19,4 +20,7 @@ $(BIN)/headerer: headerer.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
 
 $(BIN)/syntaxer: syntaxer.c | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BIN)/jamal: jamal.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<

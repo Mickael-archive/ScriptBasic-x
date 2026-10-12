@@ -13,9 +13,12 @@ now built and invoked by `setup.pl` / `makefile.jam` / `Makefile.nt.jam`:
 | Archived Perl script | C replacement               | Generates                              |
 |----------------------|-----------------------------|----------------------------------------|
 | `generrh.pl`         | `tools/codegen/generrh.c`   | `errcodes.c`, `include/error.bas`      |
-| `headerer.pl`        | `tools/codegen/headerer.c`  | the `*.h` headers from the `*.c` files |
+| `headerer.pl`         | `tools/codegen/headerer.c`  | the `*.h` headers from the `*.c` files |
 | `syntaxer.pl`        | `tools/codegen/syntaxer.c`  | `syntax.c`, `notimp.c`                 |
 | `lmt_make.pl`        | `tools/codegen/lmt_make.c`  | `lmt_*.c` from `lmt_*.def`             |
+
+The Jamal macro processor is not a code generator and is therefore not
+archived: it has been ported as well and is described in the next section.
 
 The C replacements are functionally equivalent. Note that `syntaxer.pl` was not
 deterministic (it iterated a Perl hash), so `syntaxer.c` additionally fixes the
@@ -24,6 +27,36 @@ output order to be reproducible.
 `headerer.bas`, the ScriptBasic re-implementation of `headerer.pl` that shipped
 for the bootstrap case, is superseded by the same C tool and is archived here as
 well.
+
+## The Jamal preprocessor
+
+`tools/codegen/jamal.c` is a full port of the macro processor. `setup.pl` builds
+it with the other tools and runs it to generate `bin/make/Makefile` and the
+`extensions/*/makefile` files, so the **compilation flow needs no Perl at all**.
+Every file in the tree that contains Jamal macros (104 of them: `makefile.jam`,
+`*.jim`, the `extensions/*/makefile.jam` module makefiles and the whole
+`texi/*.texi.jam` documentation set) and 34 additional stress files were compared
+against the Perl original: same stdout byte for byte, same exit status.
+
+`jamal.pl` itself stays in the tree as the documentation preprocessor, because
+the texi sources pull in the **esd** extension module (`{#use esd}`,
+`{#esd::include ...}`) and a C program cannot load Perl extension packages.
+`setup.pl` uses `bin/tools/jamal` when it exists and falls back to
+`perl jamal.pl` when it does not, and `make_common.jim` keeps `JAMAL`/`T2H`
+pointing at Perl for that reason.
+
+Known differences from the Perl original:
+
+| Feature | Behaviour |
+|---------|-----------|
+| Perl extension modules (`{#use x}`, `{#base::macro ...}`) | not available; reported as an error like the original does for a module that cannot be loaded |
+| `{#with pkg}` | the original stores an array reference where a scalar is expected and dies at run time for every reachable input; this port switches the base module instead |
+| `{#dir ...}` | not implemented (unused anywhere in the tree); reported as an error |
+| division by zero in an operational macro | the original dies with `Illegal division by zero at jamal.pl line 912.` and status 2; the same text and status are printed |
+
+One detail worth knowing: the original skips only spaces and newlines after the
+macro delimiter, because it compares a bareword `char` against tab and carriage
+return in a way that can never match. The port does the same.
 
 ## Legacy makefiles
 
@@ -73,7 +106,7 @@ The web **content** stays in place: `html/source.txt`, `html/examples/source.ssp
 
 Only code that has not been ported yet, or historical documents:
 
-* `jamal.pl` (**the build macro processor**, the big remaining one), `setup.pl`,
+* `jamal.pl` (kept for the `esd` documentation files, see above), `setup.pl`,
   and the documentation chain: `t2h.pl`, `esd2html.pl`, `esd2texi.pl`,
   `esd2any.pl`, `esdcnv.pl`, `ssplit.pl`, `mkweb.pl`, `mkcdoc.pl`,
   `mkscribadef.pl`, `moduletablemaker.pl`, `statltmaker.pl`, `lmt_help.pl`,
