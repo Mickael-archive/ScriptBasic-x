@@ -17,8 +17,8 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-This is a C file that contains only header information. Use headerer.pl to
-create command.h
+This is a C file that contains only header information. Use the headerer tool
+(tools/codegen/headerer.c) to create command.h
 
 We do not created command.h using an editor because all .h files may be deleted
 in this project during cleanup and we may loose this file accidentally.
@@ -223,7 +223,7 @@ To implement a new command or function do the following:
       Try to get some understanding how it works.
 =item Take an already implemented function which is similar to the one that you want to implement. Copy
       it to a new file, give it a new name. 
-=item Edit the T<syntax.def> file to include the new command or file and run T<syntaxer.pl syntax.def>
+=item Edit the T<syntax.def> file to include the new command or file and run T<bin/tools/syntaxer>
       to generate the files T<syntax.h> and T<syntax.def>
 =item Compile ScriptBasic to see that the function with the new name or the command has the same
       functionality as the old one that you have copied.
@@ -238,7 +238,7 @@ B<NOTE:>
 
 This file is actually a header file. This is maintained in T<command.c> to avoid
 accidental deletion of the T<command.h> file. The file T<command.h> is an intermediate file
-created from T<command.c> using the Perl utility T<headerer.pl>. Because all T<*.h> files
+created from T<command.c> using the tool T<tools/codegen/headerer.c>. Because all T<*.h> files
 are intermediate it would have been dangerous to have T<command.h> to be a source file.
 
 

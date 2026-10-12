@@ -499,9 +499,9 @@ The field @code{pCSymbols} points to an array that is used only for debugging pu
 
 The rest of the variables are used by the functions that iterate through the list of tokens when the syntax analyzer reads the token list or to report errors during lexical analysis. Error reporting is detailed in a separate section.
 
-The tables that list the lexical elements are not maintained "by hand". The source for ScriptBasic syntax is maintained in the file @file{syntax.def} and the program @file{syntaxer.pl} creates the C syntax file @file{syntax.c} from the syntax definition.
+The tables that list the lexical elements are not maintained "by hand". The source for ScriptBasic syntax is maintained in the file @file{syntax.def} and the program @file{tools/codegen/syntaxer.c} creates the C syntax file @file{syntax.c} from the syntax definition.
 
-The program @file{syntaxer.pl} is so complex that after two years I wrote it I had hard time to understand it and I rather treat it as a holly code: blessed and untouchable. (Ok: see: that code is quite compound, but if there was any bug found in that I could understand what I did in a few hours. Anyway, the brain created that code once belonged to me.)
+The program @file{tools/codegen/syntaxer.c} is so complex that after two years I wrote it I had hard time to understand it and I rather treat it as a holly code: blessed and untouchable. (Ok: see: that code is quite compound, but if there was any bug found in that I could understand what I did in a few hours. Anyway, the brain created that code once belonged to me.)
 
 [[[#define FUNCTIONSIMPLEMENTED=
 @subsection Functions implemented in this module
@@ -605,7 +605,7 @@ The symbolic definition elements are:
 @item
 @code{come_forward} These symbol definition elements should be used to define block and looping structures. Whenever an instruction like for/next or if/then/else is used it has to define where to continue execution based on the condition. The symbol definition elements go-forward and come-back place the current instruction location on a compile time stack. The symbol definition elements go-back and come-forward take the last element from the same stack. They also check that the location was placed on the stack by a matching construct, assuring that no out of order nesting structures appear, like @code{if/for/endif/next}.
 @end itemize
-Note that you can find other syntax definition elements in the file syntax.def. However these are converted to a character value by the Perl script tool syntaxer.pl These pseudo syntax definition elements are:
+Note that you can find other syntax definition elements in the file syntax.def. However these are converted to a character value by the tool @file{tools/codegen/syntaxer.c} These pseudo syntax definition elements are:
 @itemize
 @item
 @code{nl} end of line ('\n' character)
@@ -1094,7 +1094,7 @@ The main program of the standalone variation is implemented in the file @file{sc
 #include "../../basext.h"
 @end example
 
-In case you miss the file @file{scriba.h} then you should generate it using the program @file{headerer.pl} or @file{headerer.bas} which are also part of the distribution. C header files in ScriptBasic are not maintained by themselves. The text is rather maintained inside the C code, and is extracted using one of these scripts. (They do the same task.) The reason for this is to eliminate the double maintenance of function prototypes in the C and in the header file.
+In case you miss the file @file{scriba.h} then you should generate it using the program @file{tools/codegen/headerer.c} which is part of the distribution. C header files in ScriptBasic are not maintained by themselves. The text is rather maintained inside the C code, and is extracted using this program. The reason for this is to eliminate the double maintenance of function prototypes in the C and in the header file.
 
 The file @file{basext.h} is also @code{#include}d by the main program. This is not usually needed by other main programs. The standalone version needs it for the sole reason to be able to print out on the usage screen the extension module interface version that the actual interpreter support. This version is defined in the macro @code{INTERFACE_VERSION}. Other than that there is no reason or need to include any other file than @file{scriba.h}.
 
@@ -1517,7 +1517,7 @@ The basic program that uses the module includes the include file and it is ready
 
 @section Module Support Functions
 
-Module support functions and macros are to ease the life of the extension programmers. They are defined in the file @file{basext.c} and in the file @file{basext.h} generated from @file{basext.c} using the tool @file{headerer.pl}.
+Module support functions and macros are to ease the life of the extension programmers. They are defined in the file @file{basext.c} and in the file @file{basext.h} generated from @file{basext.c} using the tool @file{tools/codegen/headerer.c}.
 
 It is highly recommended that the extensions use these functions and that the extensions use the macros to call the functions the way the documentation suggests. The reason for this is to create readable code and to provide maintainability.
 

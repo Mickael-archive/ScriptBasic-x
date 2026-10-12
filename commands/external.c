@@ -125,7 +125,7 @@ A module is unloaded when the basic program execution is finished. There is no b
 
 Before the module is unloaded calling one of the operating system functions T<dlclose> or T<FreeLibrary> the program calls the module function T<finimodu> if it exists. This function gets all the four pointers (the last two are T<NULL>s) and it can perform all the tasks that the module has to do clean up.
 
-Note however that the module need not release the memory it allocated using the T<besALLOCATE> macro defined in the file T<basext.h> (which is generated using T<headerer.pl> from T<basext.c>). The memory is going to be released afterwards by ScriptBasic automatically.
+Note however that the module need not release the memory it allocated using the T<besALLOCATE> macro defined in the file T<basext.h> (which is generated using T<tools/codegen/headerer.c> from T<basext.c>). The memory is going to be released afterwards by ScriptBasic automatically.
 
 You can have a look at the source code of modules provided by ScriptBasic, for example MySQL module, Berkeley DB module, HASH module, MT module and so on.
 

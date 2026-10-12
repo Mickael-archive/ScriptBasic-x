@@ -17,8 +17,8 @@ You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-This is a C file that contains mainly header information. Use headerer.pl to
-create basext.h
+This is a C file that contains mainly header information. Use the headerer tool
+(tools/codegen/headerer.c) to create basext.h
 
 We do not created basext.h using an editor because all .h files may be deleted
 in this project during cleanup and we may loose this file accidentally.

@@ -185,8 +185,8 @@ directory @file{\ScriptBasic} that belong to the final installation set under Wi
 
 This command file creates the files @file{errcodes.c} and @file{errcodes.h} file from the file
 T<errors.def>. The file T<errors.def> contains the error messages in an easy to maintain and
-easy to read format. This bacth file using the Perl script @file{generrh.pl} creates
-the C source files for the error codes.
+easy to read format. This batch file runs the C code generator @file{generrh}
+(see @file{tools/codegen/generrh.c}) to create the C source files for the error codes.
 
 [[[SourceCode makerrs.cmd]]]
 
@@ -198,11 +198,11 @@ This command file compiles the ScriptBasic web content. It has to be executed fr
 
 @section mksyntax.cmd
 
-This command file runs the Perl script @file{syntaxer.pl} to create the @file{syntax.c} file
+This command file runs the C code generator @file{syntaxer} to create the @file{syntax.c} file
 from the file @file{syntax.def}
 
 The syntax definition of the BASIC language is defined in an easy to maintain text
-file named @file{syntax.def} and a Perl script @file{syntaxer.pl} creates the human-unreadable
+file named @file{syntax.def} and the program @file{tools/codegen/syntaxer.c} creates the human-unreadable
 C source file from it that contains all the tables that drive the syntax analyzer.
 
 [[[SourceCode mksyntax.cmd]]]
@@ -299,14 +299,14 @@ This chapter lists the definition files. These files are used to have a maintain
 
 @section errors.def
 
-This file contains the error constant definitions. This file is converted to C source file using the Perl script @file{generrh.pl}
+This file contains the error constant definitions. This file is converted to C source file using the program @file{tools/codegen/generrh.c}
 
 [[[NoSourceCode]]]
 
 @section syntax.def
 
-This file contains the syntax definition of the language ScriptBasic. This syntax definition is converted to C source file containing syntax definition tables using the Perl script
-@file{syntaxer.pl}.
+This file contains the syntax definition of the language ScriptBasic. This syntax definition is converted to C source file containing syntax definition tables using the program
+@file{tools/codegen/syntaxer.c}.
 
 [[[SourceCode syntax.def]]]
 
@@ -355,22 +355,25 @@ This tool is not going to be used anymore for the documentation of ScriptBasic. 
 
 [[[NoSourceCode]]]
 
-@section generrh.pl
+@section generrh.pl (archived)
 
-This script reads the files @file{errors.def}, @file{build.txt} and creates the files @file{errcodes.c} and @file{include/error.bas}
+This script read the files @file{errors.def}, @file{build.txt} and created the files @file{errcodes.c} and @file{include/error.bas}.
 
 The file @file{errors.def} contains the used error symbols in an easy to maintain text format.
 
+This script has been replaced by the C program @file{tools/codegen/generrh.c}, which produces byte-identical output, and has been moved to the @file{OLD/} directory.
 
-[[[SourceCode generrh.pl]]]
+[[[NoSourceCode]]]
 
-@section headerer.pl
+@section headerer.pl (archived)
 
-This Perl script reads the C source files one-by-one that are given on the command line and extracts the header information from the C file and creates the @file{.h} files.
+This script read the C source files one-by-one that are given on the command line, extracted the header information from the C file and created the @file{.h} files.
 
 Note that in case the C file was not changed and thus the new header file is the same as the old one the program does not touch the header file and this way it does not force and @code{make} utility to recompile the source useless.
 
-[[[SourceCode headerer.pl]]]
+This script has been replaced by the C program @file{tools/codegen/headerer.c} and has been moved to the @file{OLD/} directory. The ScriptBasic re-implementation @file{headerer.bas} is superseded by the same tool.
+
+[[[NoSourceCode]]]
 
 @section heber.pl
 
@@ -385,10 +388,12 @@ C source file in the directory @file{commands}
 
 [[[SourceCode mkcdoc.pl]]]
 
-@section syntaxer.pl
+@section syntaxer.pl (archived)
 
 Read the file @file{syntax.def} and create the file @file{syntax.c} converting the syntax definition
 from an easy to read and maintain format to C source file.
+
+This script has been replaced by the C program @file{tools/codegen/syntaxer.c} and has been moved to the @file{OLD/} directory. Unlike the Perl script, the C program emits the syntax tables in a deterministic order.
 
 [[[NoSourceCode]]]
 
@@ -399,12 +404,14 @@ build version.
 
 [[[SourceCode preparedeb.pl]]]
 
-@section lmt_make.pl
+@section lmt_make.pl (archived)
 
-This perl script reads a file named @file{lmt_XXX.def} and creates the file @file{lmt_XXX.c}
+This script read a file named @file{lmt_XXX.def} and created the file @file{lmt_XXX.c}
 to help the linking of the external modules into ScriptBasic static.
 
-[[[SourceCode lmt_make.pl]]]
+This script has been replaced by the C program @file{tools/codegen/lmt_make.c} and has been moved to the @file{OLD/} directory.
+
+[[[NoSourceCode]]]
 
 @section t2h.pl
 

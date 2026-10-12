@@ -108,7 +108,7 @@ typedef struct _LexObject {
 #include "errcodes.h"
 #include "report.h"
 
-/* if you do not have this file use headerer.pl to extract from this one */
+/* if you do not have this file use the headerer tool to extract from this one */
 #include "lexer.h"
 #include "ipreproc.h"
 
@@ -528,7 +528,7 @@ CUT*/
 /*POD
 =H lex_XXX()
 
-These access functions are implemented as macros and are put into <lexer.h> by the program T<headerer.pl>
+These access functions are implemented as macros and are put into <lexer.h> by the program T<tools/codegen/headerer.c>
 
 The macros access T<Int>, T<Symbol>, T<Float> etc values of the current lexeme. However these are strored
 in a location which is named a bit different. For example the string of a symbol is stored in the string

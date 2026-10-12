@@ -1,2 +1,2 @@
-perl generrh.pl
-perl headerer.pl errcodes.c
+bin\tools\generrh
+bin\tools\headerer errcodes.c

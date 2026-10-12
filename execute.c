@@ -735,7 +735,7 @@ to create a mortal would be waste of time and memory. On the other hand sometime
 assuming that they are mortal values. They should be careful.
 
 Operators are actually created in the directory T<commands> and they use the macros defined in T<command.h> (created
-by T<headerer.pl> from T<command.c>). They help to avoid pitfalls.
+by T<tools/codegen/headerer.c> from T<command.c>). They help to avoid pitfalls.
 
 The argument T<iArrayAccepted> tells the function whether an array as a result is accepted or not. If a whole
 array is accepted as a result of the expression evaluation the array is returned. If the array is not an

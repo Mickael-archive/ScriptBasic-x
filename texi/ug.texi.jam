@@ -1008,7 +1008,7 @@ To link some modules into the interpreter you have to create a file named @file{
 After the file is created issue the command:
 
 @example
-perl lmt_make.pl lmt_XXX.def
+bin/tools/lmt_make lmt_XXX.def
 @end example
 
 This will create the file @code{lmt_XXX.c}.

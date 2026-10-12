@@ -427,19 +427,19 @@ if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them 
   system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
   }
 
-if( ! $OPT{'--no-syntaxer'} ){# default is to run the syntaxer.pl
+if( ! $OPT{'--no-syntaxer'} ){# default is to run the syntaxer tool
   # run pre-compile tasks
   print "running the syntaxer tool to generate the syntax definition C language tables from syntax.def\n";
   &logit("bin/tools/syntaxer");
   `bin/tools/syntaxer`;
   }
 
-if( ! $OPT{'--no-generrh'} ){# default is to run the generrh.pl
+if( ! $OPT{'--no-generrh'} ){# default is to run the generrh tool
   print "running the generrh tool to generate the error messages from errors.def\n";
   `bin/tools/generrh`;
   }
 
-if( ! $OPT{'--no-lmt_make'} ){#default is to run the lmt_make.pl for all lmt_*.def files
+if( ! $OPT{'--no-lmt_make'} ){# default is to run the lmt_make tool for all lmt_*.def files
   print "running the lmt_make tool for all lmt*.def files\n";
   opendir(DIR,".") or die "Can not open the current directory.";
   my @lmtfiles = grep /^lmt_.*\.def$/ , readdir(DIR);
@@ -1989,7 +1989,7 @@ END
 --syntaxer or --no-syntaxer
 
 Use this option to tell setup to create the file 'syntax.c'
-from the syntax defintion 'syntax.def' running the program 'syntaxer.pl'
+from the syntax defintion 'syntax.def' running the program 'bin/tools/syntaxer'
 
 The default is to recreate the file 'syntax.c', thus you usually will
 use "--no-syntaxer' and you will use '--syntaxer' only to override the
@@ -2028,7 +2028,7 @@ END
 --headerer or --no-headerer
 
 Use this optiont to tell setup to create the header files
-running the program 'headerer.pl' for each C source file that is in
+running the program 'bin/tools/headerer' for each C source file that is in
 the source distribution.
 
 setup builds up a file list scanning all directories in the
@@ -2044,7 +2044,7 @@ END
 --generrh or --no-generrh
 
 Use this option to tell setup to create the file 'errcodes.c'
-from the syntax defintion 'errors.def' running the program 'generrh.pl'
+from the syntax defintion 'errors.def' running the program 'bin/tools/generrh'
 
 The default is to recreate the file 'errcodes.c', thus you usually will
 use "--no-generrh' and you will use '--generrh' only to override the
