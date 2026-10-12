@@ -4,6 +4,16 @@ Archived files that are no longer part of the build or the maintained source
 tree. They are kept here only for historical reference and are **not compiled,
 generated from, or shipped**.
 
+The directories that need explaining have a README of their own:
+
+* `texi-module-pages/` - the 17 old `mod_*.texi.jam` module pages, superseded by
+  `extensions/<module>/manual.texi.jam`, with the story of the `hash` page that
+  was the one real loss;
+* `upstream-finds/` - the copies of the module sources this tree had lost,
+  recovered from the SourceForge release archives, with the archaeology and
+  where each name went.  The release tarballs themselves are not committed; its
+  README records their URLs and checksums.
+
 ## Perl code generators (replaced by the C tools in `tools/codegen/`)
 
 The following Perl scripts used to generate C sources at build time. They have
