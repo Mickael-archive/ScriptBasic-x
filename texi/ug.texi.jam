@@ -1,6 +1,6 @@
 {#sep/<%/%>}\
-<%#define BUILD=<%#include ../../build.txt%>%>
-<%#define VERSION=<%#include ../../version.txt%>%>
+<%#define BUILD=<%#include ../build.txt%>%>
+<%#define VERSION=<%#include ../version.txt%>%>
 \input texinfo @c -*-texinfo-*-
 @c %**start of header
 @setfilename devguide
@@ -4886,7 +4886,7 @@ are also tried. This allows you to start ScriptBasic programs without tedious in
 
 ScriptBasic is NOT capable calling arbitrary external functions implemented in a dll file. The functions should be implemented according to the calling conventions and parameter passing methods that ScriptBasic supports. External modules usually come with the appropriate basic include file that you should include into your basic program. The included files usually contain all the external function declarations and your job is to use the functions.
 
-<%#include ../../commands.texi%>
+<%#include ../commands.texi%>
 
 @bye
 

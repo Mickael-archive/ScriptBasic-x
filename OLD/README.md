@@ -83,17 +83,18 @@ Evidence, against the Perl originals on the same input:
 
 | Check | Result |
 |-------|--------|
-| the 47 `*.texi.jam` inputs (26 under `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | output file, stdout and exit status identical, byte for byte |
+| the 30 `*.texi.jam` inputs of the tree (the 9 of `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | 28 identical byte for byte, output and exit status; `devguide` and `auxfiles` differ, both for the first reason in the table below |
 | the `esd` substitution engine: every `esd::command` of the tree, applied to 4 516 lines of the real documentation | 126 448 substitutions, all identical |
-| the 47 documents produced above through `perl t2h.pl` vs `bin/tools/t2h` | 2 225 of the 2 226 output files identical |
-| a whole `./setup --unix` build of the tree, once driven by `bin/tools/setup` and once by `perl setup.pl` | 1 020 files on either side, all identical except `scriba`, `scribacmd.o` and `setup.log`, which carry the compilation time |
+| `./mkth.sh all` twice, the second time with `perl` replaced by a script that refuses to run | exit 0, not one Perl invocation, the two runs byte identical, 3 036 files |
+| the 8 documents of `./mkth.sh all` through `perl t2h.pl` vs `bin/tools/t2h`, on the same `.texi` input | 3 035 of the 3 036 output files identical |
+| a whole `./setup --unix` build of the tree, once driven by `bin/tools/setup` and once by `perl setup.pl` | 1 057 files on either side, all identical except `scriba`, `scribacmd.o` and `setup.log`, which carry the compilation time |
 
 Differences, all of them places where the Perl original depends on the
 unordered iteration of a hash:
 
 | Feature | Behaviour |
 |---------|-----------|
-| order of the `esd::command` substitutions | `esd.pm` keeps them in a hash and applies them in `keys %COMMAND` order, which is a different order on every run of the same Perl; this port applies them sorted by key, the order the shipped `*.texi.jam` files are written for |
+| order of the `esd::command` substitutions | `esd.pm` keeps them in a hash and applies them in `keys %COMMAND` order, which is a different order on every run of the same Perl; this port applies them sorted by key, the order the shipped `*.texi.jam` files are written for. `devguide` and `auxfiles` show what the old order costs: `texi/devguide.texi.jam` and `texi/auxfiles.texi.jam` both declare `0  s{\@\@}{SAVEALLDOUBLESOBAKA}g` (protect a doubled `@`) and a last command `X s{SAVEALLDOUBLESOBAKA}{\@\@}g` (put it back), so a `keys` order that runs `X` first leaves the internal marker in the document -- 282 of them in `auxfiles` -- and one that escapes in the wrong place writes broken texinfo (`@code@{...}` 862 times in `devguide`). The Perl output cannot be reproduced at all: four `PERL_HASH_SEED` values give three different `auxfiles.texi` |
 | order of the `.hhk` index entries | `t2h.pl` writes them in hash order too; the port writes them sorted. This is the single file of the 2 226 that is not byte identical, and the original cannot even be compared with itself: two runs on the same input produce two different files |
 | Perl regular expressions in `{#esd::command ...}` | only the subset the shipped files use is understood -- literals, escapes, `.`, `^`, `$`, character classes, groups, lazy quantifiers, the `g` flag. Anything else is reported as an unsupported command instead of being silently mis-applied |
 
@@ -130,14 +131,62 @@ the end of a list, so every page of a document whose body ends on a blank line w
 one byte longer (the `<HR>` separator pushed onto a line of its own). It is fixed,
 and the two implementations agree again on every page.
 
-One documentation path is still broken, deliberately untouched: `texi/mod_*.texi.jam`
-are not what `make` builds (that is `extensions/*/manual.texi.jam`), they are the
-input of the separate `mkth.sh` / `mkath.cmd` run, and 13 of the 17 name a source
-that is not in the tree (`extensions/cgi/cginterf.c`, `extensions/ux/ux.c`,
-`extensions/zlib/zlbintrf.c`, ...).  `md5` and `tools` are modules that no longer
-exist at all, the other four (`bdb`, `gd`, `hash`, `mysql`) carry their text
-instead of an include.  Repointing the eleven whose module still exists is
-mechanical, the two orphans need a decision.
+### The guides, and `mkth.sh`
+
+The 17 old `texi/mod_*.texi.jam` were the pages of the pre-`mkthm` flow: `make`
+documents a module from `extensions/<module>/manual.texi.jam` into
+`bin/texi/mod_<module>.texi`, and `mkath.cmd` converts that built page.  Thirteen
+of the 17 named a source file that has not existed since the 1.0b30 rename, so
+they are in `OLD/texi-module-pages/` now; the one real loss, the `hash` manual,
+went back into the module.  What is left is the guides themselves, and that is
+what `mkth.sh` builds.
+
+`mkth.sh` was the UNIX half of the driver, written for a layout that no longer
+exists: it did `cd html/texi`, made a `tmp/` under it and copied the results up
+`../../../../`.  Nothing in it could run in this tree.  It now drives
+`bin/tools/jamal` and `bin/tools/t2h` and writes `bin/texi/<name>.texi` plus the
+html pages next to it, exactly where the module makefiles put `mod_*.texi`.
+`./mkth.sh all` builds the eight documents that can be built here, and it needs
+neither Perl nor LaTeX.
+
+Two include mechanisms meet in these files and they do not resolve a file name
+the same way:
+
+* `{#esd::include <file>}` opens `<file>` **relative to the current directory**
+  (`esd.pm` passes it straight to `open`), and
+* jamal's own `{#include <file>}` opens it **relative to the directory of the file
+  that includes it**.
+
+The documents were written for a current directory two levels below the source
+root (`html/texi/tmp`), so they name their files `../../FILE_NAME`.  `texi/` is
+one level below the root, so those names now take one step too many and the
+guides asked for files outside the tree; `texi/auxfiles.texi.jam`,
+`devguide.texi.jam`, `eszterengine.texi.jam`, `source.texi.jam` and
+`ug.texi.jam` name `../FILE_NAME`, `../build.txt`, `../commands.texi` instead.
+With jamal run from the document's own directory both mechanisms then look in
+the source root, which is where the files are.  `docudoc.texi.jam` and
+`prep_dbg.texi.jam` name no file and needed nothing.
+
+One trap in the port was worth the detour: `t2h` takes the directory of its
+output from its second argument.  Given a bare document name it writes into the
+current directory instead, and the first version of the script filled the root of
+the tree with 2 772 html pages.  It passes the full output path now, and
+`bin/` is in `.gitignore`, as it is for the module pages.
+
+Four documents cannot be complete, and `mkth.sh` says so instead of quietly
+writing a short page:
+
+| Document | What is missing |
+|----------|-----------------|
+| `texi/regtest.texi.jam`, `texi/samplebas.texi.jam` | `{#use samples}`, a Perl Jamal extension that is not in this tree and that produces every example and output section of both documents.  They also run `scriba`, and `samplebas` has `SCRIBAEXE=T:\MyProjects\ScriptBasic\source\scriba.exe` compiled into it.  They are not in `all` |
+| `texi/ug.texi.jam` | `commands.texi`, the command reference chapter, generated from `commands/*.c` by `mkcdoc.pl` (Perl) |
+| `texi/auxfiles.texi.jam` | `install.sh` and `mkdeb.sh`, which `./setup --install` writes.  It also still had a section each for `mkdoc.cmd` and `precompile.cmd`, two command files that left the tree long ago; those sections are gone, and with them two `SourceCode` includes that could only fail |
+| `texi/eszterengine.texi.jam` | `etc-init.d-sbhttpd` |
+
+With all of that, the guides build: from a checkout of this commit,
+`./mkth.sh all` gives 8 `.texi` documents and 3 012 html pages in `bin/texi`,
+including `ug.html` at 303 911 bytes, `devguide.html` at 627 021 and
+`source.html` at 393 156, and the missing pieces above are reported on the way.
 
 ## The setup program
 

@@ -27,8 +27,8 @@
 [[[#esd::command X s{SAVEALLDOUBLESOBAKA}{\@\@}g]]]
 
 
-[[[@define SourceFile/FILE_NAME=[[[#esd::include ../../FILE_NAME /*POD CUT*/]]] ]]]
-[[[@define SourceFileX/FILE_NAME=[[[#esd::include ../../FILE_NAME =POD =CUT]]] ]]]
+[[[@define SourceFile/FILE_NAME=[[[#esd::include ../FILE_NAME /*POD CUT*/]]] ]]]
+[[[@define SourceFileX/FILE_NAME=[[[#esd::include ../FILE_NAME =POD =CUT]]] ]]]
 \input texinfo @c -*-texinfo-*-
 @c %**start of header
 @setfilename devguide

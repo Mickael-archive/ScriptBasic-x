@@ -15,7 +15,7 @@ Special characters to be escaped by texi notation.
 
 [[[@define SourceCode/FILENAME=The source code of the file @file{FILENAME} is:
 @example
-[[[#esd::include ../../FILENAME]]]
+[[[#esd::include ../FILENAME]]]
 @end example
 ]]]
 [[[#define Eszter=Eszter SB Application Engine]]].

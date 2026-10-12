@@ -15,7 +15,7 @@ Special characters to be escaped by texi notation.
 
 [[[@define SourceCode/FILENAME=The souce code of the file @file{FILENAME} is:
 @example
-[[[#esd::include ../../FILENAME]]]
+[[[#esd::include ../FILENAME]]]
 @end example
 ]]]
 [[[@define NoSourceCode=The source code of the file is not included in
@@ -155,13 +155,6 @@ the bbf file is binary.
 
 These command files can be used to maintain the source files under Windows NT.
 
-@section mkdoc.cmd
-Create the on-line documentation
-
-This batch file creates the on-line documentations
-
-[[[SourceCode mkdoc.cmd]]]
-
 @section mkcdoc.cmd
 
 Create the command reference
@@ -206,19 +199,6 @@ file named @file{syntax.def} and the program @file{tools/codegen/syntaxer.c} cre
 C source file from it that contains all the tables that drive the syntax analyzer.
 
 [[[SourceCode mksyntax.cmd]]]
-
-@section precompile.cmd
-
-This command file performs all the tasks that are needed before the C compilation of ScriptBasic
-can start. This is
-
-@itemize
-@item creating the syntax tables from the text T<syntax.def> syntax definition
-@item creating the error codes and T<#define>s
-@item creating the header files from the C source files.
-@end itemize
-
-[[[SourceCode precompile.cmd]]]
 
 @section pack.cmd
 
