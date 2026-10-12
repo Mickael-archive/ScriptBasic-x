@@ -26,6 +26,18 @@
 # guides that is texi/, for esd.texi.jam the root.  Then both mechanisms look in
 # the source root, which is where the files are.  Run the script from anywhere.
 #
+# regtest and samplebas are the two documents of the regression suite.  They
+# show a sample program and then the output of running it: the `samples' jamal
+# extension module writes the sample into a file and the document executes it
+# with scriba.  samples.pm did not survive (it is not in the tree, its history,
+# or the release archives), so this port implements its documented interface in
+# the C jamal (see tools/codegen/jamal.c); scriba is the one ./setup builds into
+# bin/exe.  These two want the current directory to be the tmp/ subdirectory of
+# the document: they run `scriba FILE ... 2> error.txt', which writes error.txt
+# into the current directory, and then include `tmp/error.txt', which jamal
+# resolves relative to the document.  Run there, both name the same file, and
+# the sample programs and error logs stay out of the tree.
+#
 set -e
 
 top=`cd \`dirname "$0"\` && pwd`
@@ -34,7 +46,7 @@ t2h="$top/bin/tools/t2h"
 out="$top/bin/texi"
 
 # every document the driver knows about
-allnames="esd auxfiles devguide docudoc eszterengine prep_dbg source ug"
+allnames="esd auxfiles devguide docudoc eszterengine prep_dbg regtest samplebas source ug"
 
 if [ $# -eq 0 ] ; then
   echo "usage: $0 <name> [<name> ...]" >&2
@@ -59,6 +71,7 @@ if [ ! -x "$t2h" ] ; then
 mkdir -p "$out"
 
 ERRCOUNT=0
+scratch=
 
 for name in "$@" ; do
   echo "processing $name"
@@ -85,16 +98,28 @@ for name in "$@" ; do
       fi
     fi
 
+  # The regression documents want the tmp/ subdirectory of the document as
+  # their current directory (see the note at the top of this file).
+  case $name in
+    regtest|samplebas)
+      if [ ! -x "$top/bin/exe/scriba" ] ; then
+        echo "###WARNING $name: bin/exe/scriba is missing, so the sample programs"
+        echo "###WARNING $name: cannot be run and their output comes out empty."
+        echo "###WARNING $name: run ./setup first."
+        fi
+      scratch="$where/tmp"
+      mkdir -p "$scratch" || {
+        echo "###ERROR $name: cannot create the scratch directory $scratch"
+        ERRCOUNT=`expr $ERRCOUNT + 1`
+        scratch=
+        continue
+        }
+      ;;
+    esac
+
   # The documents that cannot be complete in this source tree, and why.  They
   # are built anyway, the missing part is reported as it was before.
   case $name in
-    regtest|samplebas)
-      echo "###WARNING $name: it calls the jamal extension 'samples', which is a"
-      echo "###WARNING $name: Perl module that is not in this tree, and its every"
-      echo "###WARNING $name: example and output section comes from it.  It also"
-      echo "###WARNING $name: runs scriba, and samplebas.texi.jam has a Windows"
-      echo "###WARNING $name: path compiled into SCRIBAEXE."
-      ;;
     ug)
       if [ ! -f "$top/commands.texi" ] ; then
         echo "###WARNING ug: commands.texi is missing, so the command reference"
@@ -108,9 +133,31 @@ for name in "$@" ; do
           echo "###WARNING auxfiles: ./setup --install creates it."
           fi
         done;;
+    eszterengine)
+      if [ ! -f "$top/etc-init.d-sbhttpd" ] ; then
+        echo "###WARNING eszterengine: etc-init.d-sbhttpd is missing, so its listing"
+        echo "###WARNING eszterengine: comes out empty.  ./setup --install creates it."
+        fi;;
     esac
 
-  ( cd "$where" && "$jamal" "$name.texi.jam" "$out/$name.texi" )
+  if [ -n "$scratch" ] ; then
+    # the regression documents: see the note at the top of this file.  stdin is
+    # /dev/null so that a sample that asks for input sees end of file instead of
+    # waiting for the terminal.  The scratch directory goes whatever jamal does,
+    # so a failure cannot leave the sample programs behind.
+    rc=0
+    ( cd "$scratch" && PATH="$top/bin/exe:$PATH" "$jamal" "../$name.texi.jam" \
+        "$out/$name.texi" < /dev/null ) || rc=$?
+    rm -rf "$scratch"
+    scratch=
+    if [ $rc -ne 0 ] ; then
+      echo "###ERROR $name: jamal failed with status $rc"
+      ERRCOUNT=`expr $ERRCOUNT + 1`
+      continue
+      fi
+  else
+    ( cd "$where" && "$jamal" "$name.texi.jam" "$out/$name.texi" )
+    fi
   # t2h takes the directory of its output from its second argument, so the html
   # lands next to the texi file.  Given a bare name the Perl original writes it
   # into the current directory instead, and then the build litters the tree.

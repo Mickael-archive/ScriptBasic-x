@@ -5,8 +5,9 @@
  * this project into real makefiles, scripts and documentation.  This program
  * is a faithful port of jamal.pl: for the inputs the build feeds it, it emits
  * byte-identical output.  The Perl extension interface needs a Perl
- * interpreter: the `{use esd}' module the documentation uses is built in here
- * (see the esd section below), other extension modules are reported as
+ * interpreter: the two extension modules the documentation uses, `esd' and
+ * `samples' (see the esd section below), are built in here, other extension
+ * modules are reported as
  * unsupported.
  *
  * The original iterates no hash, so its output is deterministic and so is
@@ -1541,11 +1542,13 @@ static void macro_set(const char *name, char *value, Vec *args)
 /* ============================================================== esd module
  *
  * The texinfo documentation pulls its source code through the `esd' jamal
- * extension module (esd.pm).  esd.pm is a Perl package: jamal loads it with
+ * extension module (esd.pm), and writes the sample programs it shows through
+ * `samples' (samples.pm).  esd.pm is a Perl package: jamal loads it with
  * `use jamal::esd' and then evaluates its macro calls as Perl code, so the
  * documentation chain (jamal -> t2h) could not run without a Perl
  * interpreter.  This port implements the same module in C: the macros
- * `esd::command', `esd::nocommand', `esd::include' and `esd::execute', with
+ * `esd::command', `esd::nocommand', `esd::include' and `esd::execute' (plus
+ * `samples::sample' below), with
  * the substitutions stored by `esd::command' applied to every line of the
  * included file.
  *
@@ -2233,6 +2236,7 @@ typedef struct {
 static EsdCommand *EsdCommands = NULL;
 static int nEsdCommands = 0;
 static int EsdLoaded = 0;              /* set by `{#use esd}' */
+static int SamplesLoaded = 0;          /* set by `{#use samples}' */
 
 static int esd_keyorder(const void *A, const void *B)
 {
@@ -2410,11 +2414,57 @@ static char *esd_execute(const char *arg)
     return sb_detach(&out);
 }
 
+/* {#samples::sample <file>\n<text>} -- samples.pm: "The macro sample::sample
+ * gets a sample program and saves it into a file.  The name of the file should
+ * be given by the first line of the argument."  (docudoc.html).  The text is
+ * expanded before it is written: the same text is expanded when the document
+ * prints it in its @example block, and regtest.texi.jam has one sample
+ * (onerror.bas) whose text contains a macro call.  The file name is taken as
+ * is, relative to the working directory, and the file is written without a
+ * trailing newline -- the sample text has none after its last line.  samples.pm
+ * has not survived (it is not in the tree, its history, or the release
+ * archives), so the interface above is all there is to copy; a file that
+ * cannot be written is reported and the build continues. */
+static char *esd_sample(const char *arg, const char *refFile, int level)
+{
+    const char *nl = strchr(arg, '\n');
+    const char *e  = nl ? nl : arg + strlen(arg);
+    while (arg < e && (*arg == ' ' || *arg == '\t')) arg++;
+    while (e > arg && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r')) e--;
+    SB name;
+    sb_init(&name);
+    sb_putn(&name, arg, (size_t)(e - arg));
+    const char *content = nl ? nl + 1 : "";
+    char *text = DoInput(content, refFile, level + 1);
+    if (name.p[0] == '\0') {
+        Warning("Extension macro samples::sample was called without a file name.",
+                arg);
+        sb_free(&name);
+        free(text);
+        return xstrdup("");
+    }
+    FILE *f = fopen(name.p, "wb");
+    if (!f) {
+        char msg[512];
+        snprintf(msg, sizeof msg,
+                 "Extension macro samples::sample could not write the file %s.",
+                 name.p);
+        Warning(msg, arg);
+    } else {
+        fwrite(text, 1, strlen(text), f);
+        fclose(f);
+    }
+    sb_free(&name);
+    free(text);
+    return xstrdup("");
+}
+
 /* dispatch `{#<pkg>::<macro> <rest>}'.  Returns the text the macro produced;
  * `*failed' is set when the call itself is an error (the text is then the
  * error report, which the caller returns as is, like the original does). */
 static char *esd_call(const char *pkg, const char *macro, const char *arg,
-                      const char *body, int *failed)
+                      const char *body, const char *refFile, int level,
+                      int *failed)
 {
     *failed = 0;
     if (EsdLoaded && strcmp(pkg, "esd") == 0) {
@@ -2423,14 +2473,19 @@ static char *esd_call(const char *pkg, const char *macro, const char *arg,
         if (!strcmp(macro, "::include"))   return esd_include(arg, body);
         if (!strcmp(macro, "::execute"))   return esd_execute(arg);
     }
+    if (SamplesLoaded && strcmp(pkg, "samples") == 0) {
+        if (!strcmp(macro, "::sample"))    return esd_sample(arg, refFile, level);
+        if (!strcmp(macro, "::execute"))   return esd_execute(arg);
+    }
     char msg[768];
-    if (strcmp(pkg, "esd") == 0)
+    if (strcmp(pkg, "esd") == 0 || strcmp(pkg, "samples") == 0)
+        /* the module was never `{#use}'d, so Perl has no such subroutine */
         snprintf(msg, sizeof msg, "Extension macro resulted the error: Undefined "
-                 "subroutine &jamal::esd%s called", macro);
+                 "subroutine &jamal::%s%s called", pkg, macro);
     else
         snprintf(msg, sizeof msg, "Extension macro resulted the error: only the "
-                 "esd extension module is built into this jamal, not jamal::%s",
-                 pkg);
+                 "esd and samples extension modules are built into this jamal, "
+                 "not jamal::%s", pkg);
     *failed = 1;
     return Error(msg, body);
 }
@@ -2478,9 +2533,9 @@ static char *EvalMacro(const char *input, const char *refFile, int level)
 
         /* Perl module extension macro `{base::Macro rest}`.  The original
          * evals `&jamal::<base>::<macro>(<rest>)' so that the extension package
-         * does the parsing; this port implements the one extension module the
-         * tree uses, esd, and reports the others the way a module that cannot
-         * be loaded is reported. */
+         * does the parsing; this port implements the two extension modules the
+         * tree uses, esd and samples, and reports the others the way a module
+         * that cannot be loaded is reported. */
         {
             const char *p = body;
             while (p_isword(*p)) p++;
@@ -2496,7 +2551,7 @@ static char *EvalMacro(const char *input, const char *refFile, int level)
                 const char *pkg = *base ? base : (BaseModule ? BaseModule : "");
                 const char *arg = q;   /* the rest, leading spaces included */
                 int failed = 0;
-                char *result = esd_call(pkg, macro, arg, body, &failed);
+                char *result = esd_call(pkg, macro, arg, body, refFile, level, &failed);
                 char *out = failed ? result : DoInput(result, refFile, level + 1);
                 if (!failed) free(result);
                 free(base);
@@ -2547,21 +2602,32 @@ static char *EvalMacro(const char *input, const char *refFile, int level)
             Vec *l = Split(rest, 2);
             const char *package = vec_get(l, 0);
             const char *version = vec_get(l, 1);
-            if (package && strcmp(package, "esd") == 0) {
-                /* esd.pm ships with the tree and is built into this port */
-                if (EsdLoaded) Warning("Extension esd is already loaded.", body);
-                EsdLoaded = 1;
-                /* esd.pm calls jamal::version('1.0','2.0') */
+            if (package && (strcmp(package, "esd") == 0 ||
+                             strcmp(package, "samples") == 0)) {
+                /* esd.pm travels with the tree and samples.pm did not survive,
+                 * but both interfaces are documented, so both are built into
+                 * this port. */
+                int isEsd = strcmp(package, "esd") == 0;
+                int *loaded = isEsd ? &EsdLoaded : &SamplesLoaded;
+                if (*loaded) {
+                    char w[128];
+                    snprintf(w, sizeof w, "Extension %s is already loaded.", package);
+                    Warning(w, body);
+                }
+                *loaded = 1;
+                /* esd.pm calls jamal::version('1.0','2.0'); samples.pm made the
+                 * same call (the two modules were written together), so the
+                 * same range is accepted here. */
                 if (version && *version && (p_num(version) > 2.0 || p_num(version) < 1.0)) {
                     char msg[256];
                     snprintf(msg, sizeof msg,
-                             "Extension esd does not implement the requested version %s.",
-                             version);
+                             "Extension %s does not implement the requested version %s.",
+                             package, version);
                     fatal(msg, body);
                 }
                 vec_push(BaseModules, xstrdup(BaseModule ? BaseModule : ""));
                 free(BaseModule);
-                BaseModule = xstrdup("esd");
+                BaseModule = xstrdup(package);
                 vec_free(l);
                 free(body);
                 return xstrdup("");

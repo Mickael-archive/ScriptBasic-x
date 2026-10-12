@@ -5,7 +5,7 @@
 This section is under development. In case you think that you can and want to write this section, please do not hesitate. First contact @email{peter@@verhas.com} for formatting details and then go ahead.
 %>
 
-<%#define SCRIBAEXE=T:\MyProjects\ScriptBasic\source\scriba.exe%>
+<%#define SCRIBAEXE=scriba%>
 
 <%@define Example/FILE_NAME/TEXT=
 <%#::sample FILE_NAME

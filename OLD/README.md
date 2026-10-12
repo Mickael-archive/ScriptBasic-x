@@ -59,7 +59,7 @@ Known differences from the Perl original:
 
 | Feature | Behaviour |
 |---------|-----------|
-| Perl extension modules (`{#use x}`, `{#base::macro ...}`) | not available; reported as an error like the original does for a module that cannot be loaded. The `esd` module the documentation uses **is** built in, see the next section |
+| Perl extension modules (`{#use x}`, `{#base::macro ...}`) | not available; reported as an error like the original does for a module that cannot be loaded. The two modules the documentation uses, `esd` and `samples`, **are** built in, see the next sections |
 | `{#with pkg}` | the original stores an array reference where a scalar is expected and dies at run time for every reachable input; this port switches the base module instead |
 | `{#dir ...}` | not implemented (unused anywhere in the tree); reported as an error |
 | division by zero in an operational macro | the original dies with `Illegal division by zero at jamal.pl line 912.` and status 2; the same text and status are printed |
@@ -83,7 +83,7 @@ Evidence, against the Perl originals on the same input:
 
 | Check | Result |
 |-------|--------|
-| the 30 `*.texi.jam` inputs of the tree (the 9 of `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | 28 identical byte for byte, output and exit status; `devguide` and `auxfiles` differ, both for the first reason in the table below |
+| the 30 `*.texi.jam` inputs of the tree (the 9 of `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | identical byte for byte, output and exit status, for every one of them that both sides can build here: the 7 guides the Perl can still compare, `esd.texi.jam` and the 7 module pages this machine has the libraries for. `devguide` and `auxfiles` differ, both for the first reason in the table below; `regtest` and `samplebas` are the two the C port does *more* for, see the `samples` section |
 | the `esd` substitution engine: every `esd::command` of the tree, applied to 4 516 lines of the real documentation | 126 448 substitutions, all identical |
 | `./mkth.sh all` twice, the second time with `perl` replaced by a script that refuses to run | exit 0, not one Perl invocation, the two runs byte identical, 3 036 files |
 | the 8 documents of `./mkth.sh all` through `perl t2h.pl` vs `bin/tools/t2h`, on the same `.texi` input | 3 035 of the 3 036 output files identical |
@@ -131,6 +131,65 @@ the end of a list, so every page of a document whose body ends on a blank line w
 one byte longer (the `<HR>` separator pushed onto a line of its own). It is fixed,
 and the two implementations agree again on every page.
 
+### The `samples` extension module
+
+`texi/regtest.texi.jam` and `texi/samplebas.texi.jam` are the two documents of the
+regression suite: their sections show a sample program and then the output of
+running it.  That is the second jamal extension module of the documentation, and
+the tree carries its specification -- `texi/docudoc.texi.jam`, the guide that
+describes how the documentation is written, under `@subsubsection samples.pm`:
+
+> This jamal macro package defines two macros to include sample programs as well
+> as their output into the code.  The macro `sample::sample` gets a sample
+> program and saves it into a file.  The name of the file should be given by the
+> first line of the argument.  The file saved can later be executed using the
+> macro `sample::execute`.
+
+`samples.pm` itself did not survive: it is not in the tree, not in the history of
+the tree, and not in any of the release archives of `OLD/upstream-finds/`.  The
+two macros are all the documents use, so both are built into the C jamal next to
+`esd`: `{#use samples}` adopts the module as the base module, `samples::sample`
+writes the file, and `samples::execute` is the same as `esd::execute`.  Where the
+specification is silent the document decides:
+
+* the text is expanded before it is written.  `regtest.texi.jam` has one sample
+  (`onerror.bas`) whose text contains `[[[ERRMES]]]`, a macro the document defines
+  just above it, and the prose next to it says the program prints what `ERRMES`
+  stands for.  Expanding makes the file agree with the `@example` block that
+  displays the same text: both read
+  `print " An error has occured, but this is no problem."`.
+* the file is written without a trailing newline, like the text it came from
+  (`scriba` reads it either way).
+* `samples::sample` returns nothing: the text around it in the document prints the
+  program, so a value would print it a second time.
+
+Both documents also needed a change and a build trick:
+
+* `samplebas.texi.jam` had `SCRIBAEXE=T:\MyProjects\ScriptBasic\source\scriba.exe`
+  compiled into it, a machine that does not exist.  It is `scriba` now, the one
+  `./setup` builds into `bin/exe`, and `mkth.sh` puts `bin/exe` on the `PATH` for
+  these two documents (and feeds them `/dev/null` on stdin, so a sample that asks
+  for input sees end of file instead of waiting for the terminal); when
+  `bin/exe/scriba` is missing it says that the results will come out empty.
+* they were written for a current directory of `html/texi/tmp`: the lines of
+  their `Result` templates run `scriba FILE 2> error.txt` -- which writes
+  `error.txt` into the current directory -- and then include `tmp/error.txt`,
+  which jamal resolves relative to the document.  `mkth.sh` makes `texi/tmp`, runs
+  these two documents from there and removes it again: both names then point at
+  the same file, and the sample programs (`regtest` writes 75 files, `samplebas`
+  21) never reach the tree.
+
+*Checked:*
+
+| Check | Result |
+|-------|--------|
+| `./mkth.sh all` with a `perl` on the `PATH` that refuses to run | exit 0, not one Perl invocation; `regtest.texi` 83 853 bytes and `regtest.html` 103 656, `samplebas.texi` 27 888 and `samplebas.html` 35 108 (the size of these two moves by a few dozen bytes from build to build, see the last row) |
+| the sample programs the documents write and run | `regtest`: 75 files in `texi/tmp` and 48 executions; `samplebas`: 21 files and 18 executions; the result sections carry what the interpreter printed (`hello1.bas` prints `HELLO!`, `replace.bas` prints `alabxmx mxma`, `asc.bas` prints `65` and `48`) |
+| the version banner, included from `tmp/sversion.txt` after `scriba -v 2> sversion.txt` | `ScriptBasic v2.0` / `Variation >>STANDARD<< build 0` / `Magic value 859009842` / `Node size is 24` / `Extension interface version is 11` |
+| the `Possible error messages sent to @code{stderr}` sections | six of them have content, the real `stderr` of the samples (`testnt.bas(1): error &H3e:Include file is not found` -- `nt.bas` is the Windows module) |
+| against the Perl driver | it has no `samples.pm`, so it writes both documents with empty sample sections: given a `PATH` without `scriba` the port's output is byte identical to the Perl's except for the 49 + 1 lines the runs put into the `tmp/error.txt` sections it includes, and not one line of the Perl's output is missing from it.  With `scriba` the documents carry the output of the samples instead |
+| reproducibility | these two documents cannot be byte-reproduced, and never could: they show the live output of the samples (`ARRAY@#B760B6B8`, `The local time is: 2026.10.12 22:38:31`).  70 lines differed between two runs here; nothing else in the chain varies |
+
 ### The guides, and `mkth.sh`
 
 The 17 old `texi/mod_*.texi.jam` were the pages of the pre-`mkthm` flow: `make`
@@ -173,20 +232,24 @@ current directory instead, and the first version of the script filled the root o
 the tree with 2 772 html pages.  It passes the full output path now, and
 `bin/` is in `.gitignore`, as it is for the module pages.
 
-Four documents cannot be complete, and `mkth.sh` says so instead of quietly
+Two documents still cannot be complete, and `mkth.sh` says so instead of quietly
 writing a short page:
 
 | Document | What is missing |
 |----------|-----------------|
-| `texi/regtest.texi.jam`, `texi/samplebas.texi.jam` | `{#use samples}`, a Perl Jamal extension that is not in this tree and that produces every example and output section of both documents.  They also run `scriba`, and `samplebas` has `SCRIBAEXE=T:\MyProjects\ScriptBasic\source\scriba.exe` compiled into it.  They are not in `all` |
-| `texi/ug.texi.jam` | `commands.texi`, the command reference chapter, generated from `commands/*.c` by `mkcdoc.pl` (Perl) |
 | `texi/auxfiles.texi.jam` | `install.sh` and `mkdeb.sh`, which `./setup --install` writes.  It also still had a section each for `mkdoc.cmd` and `precompile.cmd`, two command files that left the tree long ago; those sections are gone, and with them two `SourceCode` includes that could only fail |
-| `texi/eszterengine.texi.jam` | `etc-init.d-sbhttpd` |
+| `texi/eszterengine.texi.jam` | `etc-init.d-sbhttpd`, which `./setup --install` writes too |
+
+Two more were on this list and are not any more: the `ug` chapter was missing its
+command reference chapter, which `bin/tools/mkcdoc` writes now, and
+`regtest`/`samplebas` needed the `samples` extension module, which is built into
+the C jamal (see below).  Both are part of `all`.
 
 With all of that, the guides build: from a checkout of this commit,
-`./mkth.sh all` gives 8 `.texi` documents and 3 012 html pages in `bin/texi`,
-including `ug.html` at 303 911 bytes, `devguide.html` at 627 021 and
-`source.html` at 393 156, and the missing pieces above are reported on the way.
+`./mkth.sh all` gives 10 `.texi` documents and 3 903 html pages in `bin/texi` --
+1 960 `.html` and 1 943 `.htm` -- including `ug.html` at 492 242 bytes,
+`devguide.html` at 627 021 and `source.html` at 393 156, and the two missing
+pieces above are reported on the way.
 
 ## The setup program
 
@@ -239,6 +302,16 @@ are named by the current order now, which makes the command idempotent again.
 The shell script `setup` had two defects of its own, fixed along the way: it was
 not executable (mode 644, so `make all` could not run it) and its CRLF line
 endings made the `#! /bin/sh` line unusable on UNIX.
+
+One habit of the original is worth knowing before running it in a git worktree:
+`./setup --unix` rewrites the files it generates in the top directory and in
+`extensions/*` -- `configure.jim` (with the absolute path of the tree),
+`compile`, `modinst.sh`, `modmake.sh`, `setup.log`, `extensions/*/makefile`,
+`extensions/*/libraries.jim` and `extensions/*/notunix.txt`.  Those files are
+tracked, because the tree ships the ones the original setup wrote on the author's
+machine (CRLF, `/Users/verhasp/github/ScriptBasic/ScriptBasic`), and `setup.pl`
+did the same to them.  They show up as modified after a build; `git checkout --
+<files>`, or building in a copy of the tree, puts the upstream copies back.
 
 
 ## `-fPIC` for the module shared objects (`CcOptPIC`)
