@@ -14,7 +14,7 @@ all : {CreLib zlib} {CreDll zlib} {CreTexiDocument}
 	{ld} {LdOptOutput {CreDll zlib}} {LdOptInput {CreObj interface}} {LdNeededLibraryFiles}
 
 {CreObj interface} : interface.c zlib.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
 
 {CreSObj interface} : interface.c zlib.h 
 	{cc} {CcOptDefine STATIC_LINK=1} {CcOptCompile} {CcOptOutput {CreSObj interface}} {CcOptInput interface.c}

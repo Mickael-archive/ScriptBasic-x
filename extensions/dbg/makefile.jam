@@ -14,10 +14,10 @@ all : {CreLib dbg} {CreDll dbg} {CreTexiDocument}
 	{ld} {LdOptOutput {CreDll dbg}} {LdOptInput {CreObj dbg_con}} {LdOptInput {CreObj interface}} {LdNeededLibraryFiles}
 
 {CreObj dbg_con} : dbg_con.c dbg.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj dbg_con}} {CcOptInput dbg_con.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj dbg_con}} {CcOptInput dbg_con.c}
 
 {CreObj interface} : interface.c dbg_comm.h dbg.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
 
 {CreSObj interface} : interface.c dbg_comm.h dbg.h 
 	{cc} {CcOptDefine STATIC_LINK=1} {CcOptCompile} {CcOptOutput {CreSObj interface}} {CcOptInput interface.c}

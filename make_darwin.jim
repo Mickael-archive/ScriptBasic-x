@@ -34,6 +34,7 @@ The C compiler is 'cc' in Apple's developer tools
 {#define CcOptOutput/X=-o X}
 {#define CcOptInput/X=X}
 {#define CcOptCompile=-c}
+{#define CcOptPIC=-fPIC}
 {#define CcOptDefine/X=-DX}
 
 {@comment }

@@ -554,6 +554,9 @@ static const char *unixName = NULL;  /* "" | "unix" | "darwin" */
 static const char *build = "nt";     /* "unix" | "darwin" | "nt" */
 static mode_t mask_mode = 0700;
 static const char *jamalTool = NULL; /* the Jamal preprocessor to run */
+static const char *t2hTool = NULL;   /* the texi to html converter to run */
+static const char *jamalDefine = NULL;  /* {#define? JAMAL=...} for the makefiles */
+static const char *t2hDefine = NULL;
 static int    lastOptionWasHelp = 0;
 
 /* the installation variables, as the Perl globals */
@@ -822,7 +825,18 @@ static void pick_jamal(void)
 {
     int isNT = !(unixName && *unixName);
     const char *tool = isNT ? "bin\\tools\\jamal.exe" : "bin/tools/jamal";
+    const char *doc  = isNT ? "bin\\tools\\t2h.exe"   : "bin/tools/t2h";
     jamalTool = file_exists(tool) ? tool : "perl jamal.pl";
+    t2hTool   = file_exists(doc)  ? doc  : "perl t2h.pl";
+    /*
+     * The definition the generated makefiles get.  {SourceRoot} is expanded by
+     * jamal when the macro is used, so the makefiles do not carry a path that
+     * only exists on the machine that generated them any more than before.
+     */
+    jamalDefine = (strncmp(jamalTool, "perl ", 5) == 0)
+                  ? "perl {SourceRoot}jamal.pl" : "{SourceRoot}bin/tools/jamal";
+    t2hDefine   = (strncmp(t2hTool, "perl ", 5) == 0)
+                  ? "perl {SourceRoot}t2h.pl"   : "{SourceRoot}bin/tools/t2h";
 }
 
 int main(int argc, char **argv)
@@ -854,15 +868,6 @@ int main(int argc, char **argv)
     build = (unixName && *unixName) ? unixName : "nt";
 
     print_msg("This is %s cwd=%s\n", (unixName && *unixName) ? unixName : "NT", cwd);
-
-    /*
-     * Check that esd.pm is installed for Jamal.  Only the documentation chain
-     * needs it; the code build itself does not.
-     */
-    if (!find_esd_pm()) {
-        fputs(HD_ESD_MISSING, stdout);
-        return 1;
-    }
 
     subst_set("BIN", "");            /* the templates that use them are only */
     subst_set("CACHE", "");          /* interpolated after the install      */
@@ -1079,8 +1084,15 @@ int main(int argc, char **argv)
     }
 
     pick_jamal();
-    if (strcmp(jamalTool, "perl jamal.pl") == 0)
+    if (strcmp(jamalTool, "perl jamal.pl") == 0) {
         print_msg("The jamal tool is not built, falling back to perl jamal.pl\n");
+        /* the C jamal (bin/tools/jamal) has the esd extension module built in;
+         * the Perl original loads it as jamal/esd.pm and cannot run without it */
+        if (!find_esd_pm()) {
+            fputs(HD_ESD_MISSING, stdout);
+            return 1;
+        }
+    }
 
     if (!opt_true("--no-makefile")) {   /* default is to create the makefiles */
         print_msg("compiling Makefile using the Jamal preprocessor\n");
@@ -1089,14 +1101,16 @@ int main(int argc, char **argv)
         else if (strcmp(unixName, "darwin") == 0) m = "make_darwin.jim";
         else m = "make_vc7.jim";
         SB cmd; sb_init(&cmd);
-        sb_printf(&cmd, "%s -m %s makefile.jam ", jamalTool, m);
+        sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m %s makefile.jam ",
+                  jamalTool, jamalDefine, t2hDefine, m);
         sb_puts(&cmd, (unixName && *unixName) ? "bin/make/Makefile" : "bin\\vc7\\make\\makefile");
         logit(cmd.p);
         run_quiet(cmd.p);
         sb_free(&cmd);
         if (!(unixName && *unixName)) {
             sb_init(&cmd);
-            sb_printf(&cmd, "%s -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile", jamalTool);
+            sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m make_bcc.jim makefile.jam "
+                      "bin\\bcc\\make\\makefile", jamalTool, jamalDefine, t2hDefine);
             logit(cmd.p);
             run_quiet(cmd.p);
             sb_free(&cmd);
@@ -1837,8 +1851,8 @@ static void configure_module(const char *module)
         print_msg("Processing jamal files creating makefile\n");
         if (!file_exists(notus.p)) {
             SB cmd; sb_init(&cmd);
-            sb_printf(&cmd, "%s -m make_gcc.jim %s/makefile.jam %s/makefile",
-                      jamalTool, moddir.p, moddir.p);
+            sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m make_gcc.jim %s/makefile.jam %s/makefile",
+                      jamalTool, jamalDefine, t2hDefine, moddir.p, moddir.p);
             run_quiet(cmd.p);
             sb_free(&cmd);
         }
@@ -1847,8 +1861,8 @@ static void configure_module(const char *module)
         print_msg("Processing jamal files creating makefile\n");
         if (!file_exists(notus.p)) {
             SB cmd; sb_init(&cmd);
-            sb_printf(&cmd, "%s -m make_darwin.jim %s/makefile.jam %s/makefile",
-                      jamalTool, moddir.p, moddir.p);
+            sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m make_darwin.jim %s/makefile.jam %s/makefile",
+                      jamalTool, jamalDefine, t2hDefine, moddir.p, moddir.p);
             run_quiet(cmd.p);
             sb_free(&cmd);
         }
@@ -1858,16 +1872,16 @@ static void configure_module(const char *module)
         print_msg("Processing jamal files creating makefile.vc7\n");
         if (!file_exists(nt.p)) {
             SB cmd; sb_init(&cmd);
-            sb_printf(&cmd, "%s -m make_vc7.jim %s/makefile.jam %s/makefile.vc7",
-                      jamalTool, moddir.p, moddir.p);
+            sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m make_vc7.jim %s/makefile.jam %s/makefile.vc7",
+                      jamalTool, jamalDefine, t2hDefine, moddir.p, moddir.p);
             run_quiet(cmd.p);
             sb_free(&cmd);
         }
         print_msg("Processing jamal files creating makefile.bcc\n");
         if (!file_exists(nt.p)) {
             SB cmd; sb_init(&cmd);
-            sb_printf(&cmd, "%s -m make_bcc.jim %s/makefile.jam %s/makefile.bcc",
-                      jamalTool, moddir.p, moddir.p);
+            sb_printf(&cmd, "%s -DJAMAL='%s' -DT2H='%s' -m make_bcc.jim %s/makefile.jam %s/makefile.bcc",
+                      jamalTool, jamalDefine, t2hDefine, moddir.p, moddir.p);
             run_quiet(cmd.p);
             sb_free(&cmd);
         }

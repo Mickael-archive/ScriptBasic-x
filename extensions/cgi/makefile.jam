@@ -14,10 +14,10 @@ all : {CreLib cgi} {CreDll cgi} {CreTexiDocument}
 	{ld} {LdOptOutput {CreDll cgi}} {LdOptInput {CreObj cgi}} {LdOptInput {CreObj interface}} {LdNeededLibraryFiles}
 
 {CreObj cgi} : cgi.c cgi.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj cgi}} {CcOptInput cgi.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj cgi}} {CcOptInput cgi.c}
 
 {CreObj interface} : interface.c cgi.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
 
 {CreSObj interface} : interface.c cgi.h 
 	{cc} {CcOptDefine STATIC_LINK=1} {CcOptCompile} {CcOptOutput {CreSObj interface}} {CcOptInput interface.c}

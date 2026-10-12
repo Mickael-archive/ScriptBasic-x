@@ -14,7 +14,7 @@ all : {CreLib gd} {CreDll gd} {CreTexiDocument}
 	{ld} {LdOptOutput {CreDll gd}} {LdOptInput {CreObj interface}} {LdNeededLibraryFiles}
 
 {CreObj interface} : interface.c gdfontl.h gd.h gdfonts.h gdfontt.h gdfontg.h gdfontmb.h 
-	{cc} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
+	{cc} {CcOptPIC} {CcOptCompile} {CcOptOutput {CreObj interface}} {CcOptInput interface.c}
 
 {CreSObj interface} : interface.c gdfontl.h gd.h gdfonts.h gdfontt.h gdfontg.h gdfontmb.h 
 	{cc} {CcOptDefine STATIC_LINK=1} {CcOptCompile} {CcOptOutput {CreSObj interface}} {CcOptInput interface.c}

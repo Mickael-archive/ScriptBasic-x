@@ -22,6 +22,7 @@ The C compiler is 'bcc32'
 {#define CcOptOutput/X=-oX}
 {#define CcOptInput/X=X}
 {#define CcOptCompile=-c}
+{#define CcOptPIC=}
 {#define CcOptDefine/X=-DX}
 
 {@comment

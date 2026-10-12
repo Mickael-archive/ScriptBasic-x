@@ -58,12 +58,14 @@ This can be specified by the OS or the compiler specific macro file as well.
 {@comment ------------------------------------------------------------------------------ }
 {@comment                  COMMANDS THAT CAN BE USED IN MAKEFILES                        } 
 {@comment ------------------------------------------------------------------------------ }
-{@comment The building of the code uses the C jamal tool bin/tools/jamal.  These
-          two command macros build documentation: the texi sources pull in the
-          esd jamal extension module, and extension modules can only be loaded by
-          the Perl original.}
-{#define JAMAL=perl {SourceRoot}jamal.pl}
-{#define T2H=perl {SourceRoot}t2h.pl}
+{@comment These two command macros build documentation.  Both are the C tools
+          now: the esd jamal extension module the texi sources pull in is built
+          into bin/tools/jamal, and bin/tools/t2h converts the texi output to
+          html.  setup defines the macros on the command line when the C tools
+          have not been built and the Perl originals have to be used instead,
+          hence the '?', which defines them only when they are still free.}
+{#define? JAMAL={SourceRoot}bin/tools/jamal}
+{#define? T2H={SourceRoot}bin/tools/t2h}
 {#define HHC=hhc}
 
 {@comment ------------------------------------------------------------------------------ }

@@ -4,9 +4,10 @@
  * Jamal is the macro preprocessor used to turn the *.jam / *.jim sources of
  * this project into real makefiles, scripts and documentation.  This program
  * is a faithful port of jamal.pl: for the inputs the build feeds it, it emits
- * byte-identical output.  The Perl extension interface (`{use pkg}`, the
- * `pkg::macro` calls and the jamal:: API) needs a Perl interpreter, so those
- * constructs are reported as unsupported here; nothing in the build uses them.
+ * byte-identical output.  The Perl extension interface needs a Perl
+ * interpreter: the `{use esd}' module the documentation uses is built in here
+ * (see the esd section below), other extension modules are reported as
+ * unsupported.
  *
  * The original iterates no hash, so its output is deterministic and so is
  * this port.  Perl's odd corners are reproduced on purpose and flagged in
@@ -22,6 +23,7 @@
  *     -d          put error text into result -t file   trace file
  *     -Dname=val  predefine a macro          -i        install (unsupported)
  */
+#define _POSIX_C_SOURCE 200809L
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -1536,6 +1538,899 @@ static void macro_set(const char *name, char *value, Vec *args)
     e->args = args;
 }
 
+/* ============================================================== esd module
+ *
+ * The texinfo documentation pulls its source code through the `esd' jamal
+ * extension module (esd.pm).  esd.pm is a Perl package: jamal loads it with
+ * `use jamal::esd' and then evaluates its macro calls as Perl code, so the
+ * documentation chain (jamal -> t2h) could not run without a Perl
+ * interpreter.  This port implements the same module in C: the macros
+ * `esd::command', `esd::nocommand', `esd::include' and `esd::execute', with
+ * the substitutions stored by `esd::command' applied to every line of the
+ * included file.
+ *
+ * Two deliberate differences from esd.pm, both documented in OLD/README.md:
+ *
+ *   - esd.pm keeps its commands in a Perl hash and evals them in `keys
+ *     %COMMAND' order, which is a different (unspecified) order on every run.
+ *     This port runs them sorted by key, which is the order the shipped files
+ *     are written for.
+ *   - the substitutions are Perl regular expressions.  Only the subset the
+ *     shipped files use is understood here (literals, escapes, `.', `^', `$',
+ *     character classes, groups, lazy quantifiers, the `g' flag); a command
+ *     using anything else is reported on stderr and left unapplied, where
+ *     Perl would silently drop a command that fails to compile.
+ */
+
+#define RX_MAXCAP 10
+#define RX_REP_MAX 1000
+
+typedef struct RxSeq RxSeq;
+
+typedef struct {
+    unsigned char bits[32];
+    int neg;
+} RxClass;
+
+enum { RX_LIT, RX_ANY, RX_CLASS, RX_BOL, RX_EOL, RX_GROUP };
+
+typedef struct {
+    int type;
+    unsigned char ch;
+    RxClass *cls;
+    int cap;                /* capture index, 0 for a non capturing group */
+    RxSeq *alts;
+    int nalts;
+} RxAtom;
+
+typedef struct {
+    RxAtom *atom;
+    int min, max;           /* max < 0 means unbounded */
+    int greedy;
+} RxItem;
+
+struct RxSeq {
+    RxItem *items;
+    int n;
+    int cap;
+};
+
+typedef struct {
+    const char *s;
+    size_t len;
+    int capstart[RX_MAXCAP], capend[RX_MAXCAP];
+} RxState;
+
+typedef struct {
+    const char *p;
+    int err;
+    char why[128];
+    int ncap;
+} RxParse;
+
+/* ---------------------------------------------------------------- bitmap */
+
+static void rx_setbit(RxClass *c, unsigned char ch)
+{
+    c->bits[ch >> 3] |= (unsigned char)(1u << (ch & 7));
+}
+
+static int rx_getbit(const RxClass *c, unsigned char ch)
+{
+    return (c->bits[ch >> 3] >> (ch & 7)) & 1;
+}
+
+static RxClass *rx_newclass(void)
+{
+    RxClass *c = xmalloc(sizeof *c);
+    memset(c, 0, sizeof *c);
+    return c;
+}
+
+static void rx_predef(RxClass *c, char e)
+{
+    for (int i = 0; i < 256; i++) {
+        unsigned char ch = (unsigned char)i;
+        int hit;
+        switch (e) {
+        case 's': hit = is_space_perl((char)ch); break;
+        case 'S': hit = !is_space_perl((char)ch); break;
+        case 'd': hit = isdigit(ch); break;
+        case 'D': hit = !isdigit(ch); break;
+        case 'w': hit = p_isword((char)ch); break;
+        default:  hit = !p_isword((char)ch); break;
+        }
+        if (hit) rx_setbit(c, ch);
+    }
+}
+
+/* ---------------------------------------------------------------- parsing */
+
+static void rx_fail(RxParse *ps, const char *why)
+{
+    if (!ps->err) {
+        ps->err = 1;
+        snprintf(ps->why, sizeof ps->why, "%s", why);
+    }
+}
+
+static void rx_pushitem(RxSeq *sq, RxAtom *a, int min, int max, int greedy)
+{
+    if (sq->n == sq->cap) {
+        sq->cap = sq->cap ? sq->cap * 2 : 8;
+        sq->items = xrealloc(sq->items, (size_t)sq->cap * sizeof *sq->items);
+    }
+    sq->items[sq->n].atom = a;
+    sq->items[sq->n].min = min;
+    sq->items[sq->n].max = max;
+    sq->items[sq->n].greedy = greedy;
+    sq->n++;
+}
+
+static void rx_pushalt(RxAtom *a, RxSeq s)
+{
+    a->alts = xrealloc(a->alts, (size_t)(a->nalts + 1) * sizeof *a->alts);
+    a->alts[a->nalts++] = s;
+}
+
+static RxAtom *rx_parse_class(RxParse *ps)
+{
+    RxAtom *a = xmalloc(sizeof *a);
+    memset(a, 0, sizeof *a);
+    a->type = RX_CLASS;
+    a->cls = rx_newclass();
+    ps->p++;                                     /* '[' */
+    if (*ps->p == '^') { a->cls->neg = 1; ps->p++; }
+    int first = 1;
+    for (;;) {
+        char c = *ps->p;
+        if (c == '\0') { rx_fail(ps, "unmatched ["); return a; }
+        if (c == ']' && !first) { ps->p++; break; }
+        first = 0;
+        if (c == '\\') {
+            ps->p++;
+            char e = *ps->p;
+            if (!e) { rx_fail(ps, "trailing backslash in [...]"); return a; }
+            ps->p++;
+            if (e == 's' || e == 'S' || e == 'd' || e == 'D' || e == 'w' || e == 'W') {
+                rx_predef(a->cls, e);
+                continue;
+            }
+            switch (e) {
+            case 'n': c = '\n'; break;
+            case 't': c = '\t'; break;
+            case 'r': c = '\r'; break;
+            case 'f': c = '\f'; break;
+            case 'a': c = '\a'; break;
+            case 'e': c = '\033'; break;
+            default:  c = e; break;
+            }
+        } else ps->p++;
+        if (*ps->p == '-' && ps->p[1] && ps->p[1] != ']') {
+            ps->p++;
+            char hi = *ps->p++;
+            if (hi == '\\' && *ps->p) hi = *ps->p++;
+            if ((unsigned char)hi < (unsigned char)c) { rx_fail(ps, "invalid range in [...]"); return a; }
+            for (int x = (unsigned char)c; x <= (unsigned char)hi; x++) rx_setbit(a->cls, (unsigned char)x);
+            continue;
+        }
+        rx_setbit(a->cls, (unsigned char)c);
+    }
+    return a;
+}
+
+static RxSeq rx_parse_alt(RxParse *ps, int inGroup);
+
+static RxAtom *rx_parse_group(RxParse *ps)
+{
+    RxAtom *a = xmalloc(sizeof *a);
+    memset(a, 0, sizeof *a);
+    a->type = RX_GROUP;
+    ps->p++;                                     /* '(' */
+    if (*ps->p == '?') { rx_fail(ps, "(?...): no such construct here"); return a; }
+    if (ps->ncap + 1 >= RX_MAXCAP) { rx_fail(ps, "too many capture groups"); return a; }
+    a->cap = ++ps->ncap;
+    for (;;) {
+        RxSeq s = rx_parse_alt(ps, 1);
+        rx_pushalt(a, s);
+        if (ps->err) return a;
+        if (*ps->p == '|') { ps->p++; continue; }
+        if (*ps->p == ')') { ps->p++; return a; }
+        return a;                                /* '\0': reported by rx_parse_alt */
+    }
+}
+
+static RxAtom *rx_parse_atom(RxParse *ps)
+{
+    RxAtom *a = xmalloc(sizeof *a);
+    memset(a, 0, sizeof *a);
+    char c = *ps->p;
+    switch (c) {
+    case '.': ps->p++; a->type = RX_ANY; return a;
+    case '^': ps->p++; a->type = RX_BOL; return a;
+    case '$':
+        /* Perl interpolates `$name', `${name}' and `$(name)' in a pattern;
+         * the anchor is the only dollar the esd files use */
+        if (p_isword(ps->p[1]) || ps->p[1] == '{' || ps->p[1] == '(') {
+            rx_fail(ps, "variable interpolation in a pattern is not supported");
+            return a;
+        }
+        ps->p++;
+        a->type = RX_EOL;
+        return a;
+    case '(': return rx_parse_group(ps);
+    case '[': return rx_parse_class(ps);
+    case '*': case '+': case '?':
+        rx_fail(ps, "quantifier follows nothing");
+        return a;
+    case '\\': {
+        ps->p++;
+        char e = *ps->p;
+        if (!e) { rx_fail(ps, "trailing backslash"); return a; }
+        ps->p++;
+        if (e == 's' || e == 'S' || e == 'd' || e == 'D' || e == 'w' || e == 'W') {
+            a->type = RX_CLASS;
+            a->cls = rx_newclass();
+            rx_predef(a->cls, e);
+            return a;
+        }
+        switch (e) {
+        case 'n': c = '\n'; break;
+        case 't': c = '\t'; break;
+        case 'r': c = '\r'; break;
+        case 'f': c = '\f'; break;
+        case 'a': c = '\a'; break;
+        case 'e': c = '\033'; break;
+        case 'b': case 'B': case 'A': case 'Z': case 'z': case 'G': case 'Q': case 'E':
+        case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+            rx_fail(ps, "unsupported escape in pattern");
+            return a;
+        default: c = e; break;
+        }
+        a->type = RX_LIT;
+        a->ch = (unsigned char)c;
+        return a;
+    }
+    default:
+        a->type = RX_LIT;
+        a->ch = (unsigned char)c;
+        ps->p++;
+        return a;
+    }
+}
+
+static void rx_parse_quant(RxParse *ps, int *min, int *max, int *greedy)
+{
+    char c = *ps->p;
+    *min = 1; *max = 1; *greedy = 1;
+    if (c == '*') { *min = 0; *max = -1; ps->p++; }
+    else if (c == '+') { *min = 1; *max = -1; ps->p++; }
+    else if (c == '?') { *min = 0; *max = 1; ps->p++; }
+    else if (c == '{') {
+        const char *q = ps->p + 1;
+        int m = 0, hasM = 0;
+        while (isdigit((unsigned char)*q)) { m = m * 10 + (*q - '0'); q++; hasM = 1; }
+        if (hasM && *q == '}') { *min = *max = m; ps->p = q + 1; }
+        else if (hasM && *q == ',') {
+            q++;
+            if (*q == '}') { *min = m; *max = -1; ps->p = q + 1; }
+            else {
+                int n = 0, hasN = 0;
+                while (isdigit((unsigned char)*q)) { n = n * 10 + (*q - '0'); q++; hasN = 1; }
+                if (hasN && *q == '}') { *min = m; *max = n; ps->p = q + 1; }
+            }
+        }
+        /* anything else: Perl treats the brace as a literal, leave it there */
+    }
+    if ((*min != 1 || *max != 1) && *ps->p == '?' && !ps->err) {
+        *greedy = 0;
+        ps->p++;
+    }
+}
+
+static RxSeq rx_parse_alt(RxParse *ps, int inGroup)
+{
+    RxSeq sq = {NULL, 0, 0};
+    for (;;) {
+        char c = *ps->p;
+        if (ps->err) break;
+        if (c == '\0') { if (inGroup) rx_fail(ps, "unmatched ("); break; }
+        if (c == '|') break;
+        if (c == ')') { if (inGroup) break; rx_fail(ps, "unmatched )"); break; }
+        RxAtom *a = rx_parse_atom(ps);
+        if (ps->err) break;
+        int min, max, greedy;
+        rx_parse_quant(ps, &min, &max, &greedy);
+        if (ps->err) break;
+        rx_pushitem(&sq, a, min, max, greedy);
+    }
+    return sq;
+}
+
+/* compile a pattern into a one item sequence holding the top level group */
+static int rx_compile(const char *pat, RxSeq *out, int *ncap, char *err, size_t errsz)
+{
+    RxParse ps;
+    memset(&ps, 0, sizeof ps);
+    ps.p = pat;
+    RxAtom *top = xmalloc(sizeof *top);
+    memset(top, 0, sizeof *top);
+    top->type = RX_GROUP;
+    for (;;) {
+        RxSeq s = rx_parse_alt(&ps, 0);
+        rx_pushalt(top, s);
+        if (ps.err) break;
+        if (*ps.p == '|') { ps.p++; continue; }
+        break;
+    }
+    if (ps.err) {
+        snprintf(err, errsz, "%s", ps.why);
+        return 0;
+    }
+    memset(out, 0, sizeof *out);
+    rx_pushitem(out, top, 1, 1, 1);
+    *ncap = ps.ncap;
+    return 1;
+}
+
+/* --------------------------------------------------------------- matching
+ *
+ * Matching is written in continuation passing style: every node is handed the
+ * continuation that matches the rest of the pattern, and a node that can match
+ * in several ways keeps asking that continuation until it succeeds.  That is
+ * what a backtracking engine does internally and it is the only way the lazy
+ * quantifiers used by esd.pm (`(.*?)') can backtrack into a longer match when
+ * the text that follows them fails. */
+
+static void rx_save(const RxState *st, int *save)
+{
+    for (int i = 0; i < RX_MAXCAP; i++) {
+        save[2 * i] = st->capstart[i];
+        save[2 * i + 1] = st->capend[i];
+    }
+}
+
+static void rx_restore(RxState *st, const int *save)
+{
+    for (int i = 0; i < RX_MAXCAP; i++) {
+        st->capstart[i] = save[2 * i];
+        st->capend[i] = save[2 * i + 1];
+    }
+}
+
+typedef int (*RxCont)(RxState *st, size_t pos, void *ctx);
+
+static int rx_m_seq(const RxSeq *sq, int idx, RxState *st, size_t pos, RxCont cont, void *ctx);
+static int rx_m_atom(const RxAtom *a, RxState *st, size_t pos, RxCont cont, void *ctx);
+
+typedef struct {
+    const RxSeq *sq;
+    int idx;
+    RxCont cont;
+    void *ctx;
+} RxSeqCont;
+
+static int rx_seq_cont(RxState *st, size_t pos, void *vctx)
+{
+    RxSeqCont *c = vctx;
+    return rx_m_seq(c->sq, c->idx, st, pos, c->cont, c->ctx);
+}
+
+typedef struct {
+    const RxSeq *sq;
+    int idx;
+    int count;                  /* repetitions completed when this one matched */
+    size_t start;               /* where the repetition started */
+    RxCont cont;
+    void *ctx;
+} RxRepCont;
+
+static int rx_m_rep(const RxSeq *sq, int idx, int count, size_t pos, RxState *st,
+                    RxCont cont, void *ctx);
+
+static int rx_rep_cont(RxState *st, size_t pos, void *vctx)
+{
+    RxRepCont *c = vctx;
+    const RxItem *it = &c->sq->items[c->idx];
+    /* a repetition that consumed nothing would recurse for ever; allow it only
+     * while the minimum number of repetitions is not reached yet */
+    if (pos == c->start && c->count >= it->min) return 0;
+    return rx_m_rep(c->sq, c->idx, c->count, pos, st, c->cont, c->ctx);
+}
+
+static int rx_m_rep(const RxSeq *sq, int idx, int count, size_t pos, RxState *st,
+                    RxCont cont, void *ctx)
+{
+    const RxItem *it = &sq->items[idx];
+    int max = it->max < 0 ? RX_REP_MAX : it->max;
+    int save[2 * RX_MAXCAP];
+
+    if (it->greedy) {
+        if (count < max) {
+            RxRepCont rc = { sq, idx, count + 1, pos, cont, ctx };
+            rx_save(st, save);
+            if (rx_m_atom(it->atom, st, pos, rx_rep_cont, &rc)) return 1;
+            rx_restore(st, save);
+        }
+        if (count >= it->min) return cont(st, pos, ctx);
+        return 0;
+    }
+    if (count >= it->min) {
+        rx_save(st, save);
+        if (cont(st, pos, ctx)) return 1;
+        rx_restore(st, save);
+    }
+    if (count < max) {
+        RxRepCont rc = { sq, idx, count + 1, pos, cont, ctx };
+        rx_save(st, save);
+        if (rx_m_atom(it->atom, st, pos, rx_rep_cont, &rc)) return 1;
+        rx_restore(st, save);
+    }
+    return 0;
+}
+
+static int rx_m_seq(const RxSeq *sq, int idx, RxState *st, size_t pos, RxCont cont, void *ctx)
+{
+    if (idx >= sq->n) return cont(st, pos, ctx);
+    const RxItem *it = &sq->items[idx];
+    RxSeqCont c = { sq, idx + 1, cont, ctx };
+    if (it->min == 1 && it->max == 1) return rx_m_atom(it->atom, st, pos, rx_seq_cont, &c);
+    return rx_m_rep(sq, idx, 0, pos, st, rx_seq_cont, &c);
+}
+
+typedef struct {
+    const RxAtom *a;
+    size_t start;
+    RxCont cont;
+    void *ctx;
+} RxGroupCont;
+
+static int rx_group_cont(RxState *st, size_t pos, void *vctx)
+{
+    RxGroupCont *g = vctx;
+    if (g->a->cap) {
+        st->capstart[g->a->cap] = (int)g->start;
+        st->capend[g->a->cap] = (int)pos;
+    }
+    if (g->cont(st, pos, g->ctx)) return 1;
+    if (g->a->cap) { st->capstart[g->a->cap] = -1; st->capend[g->a->cap] = -1; }
+    return 0;
+}
+
+static int rx_m_atom(const RxAtom *a, RxState *st, size_t pos, RxCont cont, void *ctx)
+{
+    switch (a->type) {
+    case RX_LIT:
+        if (pos < st->len && (unsigned char)st->s[pos] == a->ch) return cont(st, pos + 1, ctx);
+        return 0;
+    case RX_ANY:
+        if (pos < st->len && st->s[pos] != '\n') return cont(st, pos + 1, ctx);
+        return 0;
+    case RX_CLASS: {
+        if (pos >= st->len) return 0;
+        if (rx_getbit(a->cls, (unsigned char)st->s[pos]) == a->cls->neg) return 0;
+        return cont(st, pos + 1, ctx);
+    }
+    case RX_BOL:
+        if (pos == 0) return cont(st, pos, ctx);
+        return 0;
+    case RX_EOL:
+        if (pos == st->len || (pos + 1 == st->len && st->s[pos] == '\n')) return cont(st, pos, ctx);
+        return 0;
+    case RX_GROUP: {
+        for (int i = 0; i < a->nalts; i++) {
+            int save[2 * RX_MAXCAP];
+            RxGroupCont g = { a, pos, cont, ctx };
+            rx_save(st, save);
+            if (rx_m_seq(&a->alts[i], 0, st, pos, rx_group_cont, &g)) return 1;
+            rx_restore(st, save);
+        }
+        return 0;
+    }
+    }
+    return 0;
+}
+
+typedef struct {
+    size_t end;
+    int matched;
+} RxTopCont;
+
+static int rx_top_cont(RxState *st, size_t pos, void *vctx)
+{
+    (void)st;
+    RxTopCont *t = vctx;
+    t->end = pos;
+    t->matched = 1;
+    return 1;
+}
+
+/* try to match the whole pattern at `start'; returns 1 and fills *end on
+ * success */
+static int rx_match_at(const RxSeq *seq, RxState *st, size_t start, size_t *end)
+{
+    RxTopCont t = { 0, 0 };
+    if (!rx_m_seq(seq, 0, st, start, rx_top_cont, &t)) return 0;
+    *end = t.end;
+    return 1;
+}
+
+static void rx_free_seq(RxSeq *sq);
+
+static void rx_free_atom(RxAtom *a)
+{
+    if (!a) return;
+    for (int i = 0; i < a->nalts; i++) rx_free_seq(&a->alts[i]);
+    free(a->alts);
+    free(a->cls);
+    free(a);
+}
+
+static void rx_free_seq(RxSeq *sq)
+{
+    for (int i = 0; i < sq->n; i++) rx_free_atom(sq->items[i].atom);
+    free(sq->items);
+    sq->items = NULL;
+    sq->n = 0;
+}
+
+/* ----------------------------------------------------------- substitution */
+
+static void rx_expand(const char *rep, size_t replen, const RxState *st,
+                      size_t mstart, size_t mend, SB *out)
+{
+    for (size_t i = 0; i < replen; i++) {
+        char c = rep[i];
+        if (c == '$' && i + 1 < replen) {
+            char d = rep[i + 1];
+            if (d == '&') { sb_putn(out, st->s + mstart, mend - mstart); i++; continue; }
+            if (d >= '1' && d <= '9') {
+                int k = d - '0';
+                if (st->capstart[k] >= 0 && st->capend[k] >= st->capstart[k])
+                    sb_putn(out, st->s + st->capstart[k], (size_t)(st->capend[k] - st->capstart[k]));
+                i++;
+                continue;
+            }
+            sb_putc(out, '$');
+            continue;
+        }
+        if (c == '\\' && i + 1 < replen) {
+            char d = rep[++i];
+            switch (d) {
+            case 'n': sb_putc(out, '\n'); break;
+            case 't': sb_putc(out, '\t'); break;
+            case 'r': sb_putc(out, '\r'); break;
+            case 'f': sb_putc(out, '\f'); break;
+            case 'a': sb_putc(out, '\a'); break;
+            case 'e': sb_putc(out, '\033'); break;
+            default:  sb_putc(out, d); break;
+            }
+            continue;
+        }
+        sb_putc(out, c);
+    }
+}
+
+/* apply one compiled pattern to a string; returns 0 when nothing matched and
+ * the output then has to be thrown away by the caller */
+static int rx_apply(const RxSeq *seq, const char *subject, const char *rep,
+                    size_t replen, int global, SB *out)
+{
+    RxState st;
+    memset(&st, 0, sizeof st);
+    st.s = subject;
+    st.len = strlen(subject);
+    for (int i = 0; i < RX_MAXCAP; i++) { st.capstart[i] = -1; st.capend[i] = -1; }
+
+    size_t pos = 0, len = st.len;
+    int done = 0;
+    while (pos <= len) {
+        size_t found = (size_t)-1, foundEnd = 0;
+        for (size_t start = pos; start <= len; start++) {
+            int save[2 * RX_MAXCAP];
+            rx_save(&st, save);
+            if (rx_match_at(seq, &st, start, &foundEnd)) { found = start; break; }
+            rx_restore(&st, save);
+        }
+        if (found == (size_t)-1) break;
+        sb_putn(out, subject + pos, found - pos);
+        rx_expand(rep, replen, &st, found, foundEnd, out);
+        done = 1;
+        pos = foundEnd;
+        if (!global) break;
+        if (foundEnd == found) {
+            /* an empty match: Perl keeps the character and moves on */
+            if (foundEnd < len) sb_putc(out, subject[foundEnd]);
+            pos = foundEnd + 1;
+        }
+    }
+    if (pos <= len) sb_putn(out, subject + pos, len - pos);
+    return done;
+}
+
+/* read one section of a substitution; `*pp` points at the first character
+ * after the opening delimiter (or at the section itself for the unpaired
+ * form) and is left after the closing delimiter */
+static int rx_read_section(const char **pp, char delim, char closeDelim,
+                           SB *dst, char *err, size_t errsz)
+{
+    const char *p = *pp;
+    int depth = closeDelim ? 1 : 0;
+    while (*p) {
+        if (*p == '\\' && p[1]) { sb_putc(dst, *p); sb_putc(dst, p[1]); p += 2; continue; }
+        if (closeDelim) {
+            if (*p == delim) depth++;
+            else if (*p == closeDelim) {
+                depth--;
+                if (depth == 0) { p++; *pp = p; return 1; }
+            }
+        } else if (*p == delim) {
+            p++;
+            *pp = p;
+            return 1;
+        }
+        sb_putc(dst, *p++);
+    }
+    *pp = p;
+    snprintf(err, errsz, "unterminated substitution");
+    return 0;
+}
+
+/* the closing delimiter that belongs to an opening one (perlop's "bracketing
+ * quotes"), 0 when the delimiter stands alone */
+static char rx_matching(char delim)
+{
+    switch (delim) {
+    case '{': return '}';
+    case '[': return ']';
+    case '(': return ')';
+    case '<': return '>';
+    default:  return 0;
+    }
+}
+
+/* parse `s{pat}{rep}mods' and return 1 when the command was understood */
+static int rx_parse_subst(const char *cmd, SB *pat, SB *rep, int *global,
+                          char *err, size_t errsz)
+{
+    const char *p = cmd;
+    *global = 0;
+    if (*p != 's') { snprintf(err, errsz, "not a substitution"); return 0; }
+    p++;
+    if (!*p) { snprintf(err, errsz, "missing delimiter"); return 0; }
+    char delim = *p++;
+    char closeDelim = rx_matching(delim);
+    if (!rx_read_section(&p, delim, closeDelim, pat, err, errsz)) return 0;
+    if (closeDelim) {
+        /* "If the PATTERN is delimited by bracketing quotes, the REPLACEMENT
+         * has its own pair of quotes" -- perlop */
+        if (!*p) { snprintf(err, errsz, "missing replacement delimiter"); return 0; }
+        char rdelim = *p++;
+        char rclose = rx_matching(rdelim);
+        if (!rx_read_section(&p, rdelim, rclose, rep, err, errsz)) return 0;
+    } else if (!rx_read_section(&p, delim, 0, rep, err, errsz)) {
+        return 0;
+    }
+    for (; *p; p++) {
+        if (*p == 'g') { *global = 1; continue; }
+        if (is_space_perl(*p)) break;
+        snprintf(err, errsz, "unsupported modifier '%c'", *p);
+        return 0;
+    }
+    while (is_space_perl(*p)) p++;
+    if (*p) { snprintf(err, errsz, "trailing text after the modifiers"); return 0; }
+    return 1;
+}
+
+/* ------------------------------------------------------------ esd commands */
+
+typedef struct {
+    char *key;
+    char *cmd;
+    int warned;
+} EsdCommand;
+
+static EsdCommand *EsdCommands = NULL;
+static int nEsdCommands = 0;
+static int EsdLoaded = 0;              /* set by `{#use esd}' */
+
+static int esd_keyorder(const void *A, const void *B)
+{
+    return strcmp(((const EsdCommand *)A)->key, ((const EsdCommand *)B)->key);
+}
+
+static char *esd_apply_commands(const char *line)
+{
+    char *cur = xstrdup(line);
+    for (int i = 0; i < nEsdCommands; i++) {
+        if (EsdCommands[i].cmd[0] == '\0') continue;   /* eval undef: no-op */
+        SB pat, rep, out;
+        sb_init(&pat); sb_init(&rep); sb_init(&out);
+        int global = 0;
+        char err[160];
+        err[0] = '\0';
+        if (!rx_parse_subst(EsdCommands[i].cmd, &pat, &rep, &global, err, sizeof err)) {
+            sb_free(&out);
+        } else {
+            RxSeq seq;
+            int ncap = 0;
+            if (!rx_compile(pat.p, &seq, &ncap, err, sizeof err)) {
+                sb_free(&out);
+            } else {
+                int done = rx_apply(&seq, cur, rep.p, strlen(rep.p), global, &out);
+                rx_free_seq(&seq);
+                if (done) { free(cur); cur = sb_detach(&out); }
+                else sb_free(&out);
+            }
+        }
+        sb_free(&pat);
+        sb_free(&rep);
+        if (err[0] && !EsdCommands[i].warned) {
+            EsdCommands[i].warned = 1;
+            if (!SupressWarnings) {
+                SB m; sb_init(&m);
+                sb_puts(&m, "esd: the command <");
+                sb_puts(&m, EsdCommands[i].cmd);
+                sb_puts(&m, "> is not applied: ");
+                sb_puts(&m, err);
+                sb_puts(&m, "\n");
+                fputs(m.p, stderr);
+                sb_free(&m);
+            }
+        }
+    }
+    return cur;
+}
+
+/* {#esd::command <key> <perl-substitution>} -- esd.pm:
+ *     $arg =~ /^\s+(\w+)\s+(.*)/;  $COMMAND{$name} = $command; */
+static char *esd_command(const char *arg)
+{
+    char *key = NULL, *cmd = NULL;
+    if (is_space_perl(*arg)) {
+        const char *p = arg;
+        while (is_space_perl(*p)) p++;
+        const char *ks = p;
+        while (p_isword(*p)) p++;
+        if (p != ks && is_space_perl(*p)) {
+            const char *ke = p;
+            while (is_space_perl(*p)) p++;
+            const char *cs = p;
+            while (*p && *p != '\n') p++;
+            key = xmemdup(ks, (size_t)(ke - ks));
+            cmd = xmemdup(cs, (size_t)(p - cs));
+        }
+    }
+    if (!key) {
+        /* no match: $1 and $2 stay undef, which registers the empty key with
+         * an undef command -- a command that does nothing */
+        key = xstrdup("");
+        cmd = xstrdup("");
+    }
+    for (int i = 0; i < nEsdCommands; i++) {
+        if (strcmp(EsdCommands[i].key, key) == 0) {
+            free(EsdCommands[i].cmd);
+            EsdCommands[i].cmd = cmd;
+            EsdCommands[i].warned = 0;
+            free(key);
+            return xstrdup("");
+        }
+    }
+    EsdCommands = xrealloc(EsdCommands, (size_t)(nEsdCommands + 1) * sizeof *EsdCommands);
+    EsdCommands[nEsdCommands].key = key;
+    EsdCommands[nEsdCommands].cmd = cmd;
+    EsdCommands[nEsdCommands].warned = 0;
+    nEsdCommands++;
+    /* esd.pm uses the Perl hash order here, which is not reproducible; the
+     * files are written for the numeric order of their keys */
+    qsort(EsdCommands, nEsdCommands, sizeof *EsdCommands, esd_keyorder);
+    return xstrdup("");
+}
+
+/* {#esd::nocommand} */
+static char *esd_nocommand(void)
+{
+    for (int i = 0; i < nEsdCommands; i++) {
+        free(EsdCommands[i].key);
+        free(EsdCommands[i].cmd);
+    }
+    free(EsdCommands);
+    EsdCommands = NULL;
+    nEsdCommands = 0;
+    return xstrdup("");
+}
+
+/* {#esd::include <file> [<start> [<stop>]]} -- esd.pm reads the file, runs
+ * every registered command on every line and keeps the lines between the
+ * start and the stop markers. */
+static char *esd_include(const char *arg, const char *body)
+{
+    char *field[3] = {NULL, NULL, NULL};
+    int nf = 0;
+    const char *p = arg;
+    while (is_space_perl(*p)) p++;
+    while (*p && nf < 3) {
+        const char *s = p;
+        while (*p && !is_space_perl(*p)) p++;
+        field[nf++] = xmemdup(s, (size_t)(p - s));
+        while (is_space_perl(*p)) p++;
+    }
+    const char *start = field[1] ? field[1] : "";
+    const char *stop  = field[2] ? field[2] : "";
+
+    int ok = 0;
+    char *content = read_whole_file(field[0] ? field[0] : "", &ok);
+    if (!ok) {
+        char msg[512];
+        snprintf(msg, sizeof msg, "Can not open %s", field[0] ? field[0] : "");
+        for (int i = 0; i < nf; i++) free(field[i]);
+        return Error(msg, body);
+    }
+
+    SB out;
+    sb_init(&out);
+    int sw = 0;
+    const char *q = content;
+    while (*q) {
+        const char *nl = strchr(q, '\n');
+        size_t seglen = nl ? (size_t)(nl - q) : strlen(q);
+        char *line = xmemdup(q, seglen);          /* chomp */
+        q += seglen + (nl ? 1 : 0);
+        if (sw == 0 && strcmp(line, start) == 0) { sw = 1; free(line); continue; }
+        if (sw == 1 && strcmp(line, stop) == 0)  { sw = 0; free(line); continue; }
+        char *sub = esd_apply_commands(line);
+        if (sw) { sb_puts(&out, sub); sb_putc(&out, '\n'); }
+        free(sub);
+        free(line);
+    }
+    free(content);
+    for (int i = 0; i < nf; i++) free(field[i]);
+    return sb_detach(&out);
+}
+
+/* {#esd::execute <command>} -- esd.pm: $arg =~ s{/}{\\}g; return `$arg`; */
+static char *esd_execute(const char *arg)
+{
+    SB cmd;
+    sb_init(&cmd);
+    for (const char *p = arg; *p; p++) sb_putc(&cmd, *p == '/' ? '\\' : *p);
+    SB out;
+    sb_init(&out);
+    FILE *f = popen(cmd.p, "r");
+    if (f) {
+        char buf[4096];
+        size_t n;
+        while ((n = fread(buf, 1, sizeof buf, f)) > 0) sb_putn(&out, buf, n);
+        pclose(f);
+    }
+    sb_free(&cmd);
+    return sb_detach(&out);
+}
+
+/* dispatch `{#<pkg>::<macro> <rest>}'.  Returns the text the macro produced;
+ * `*failed' is set when the call itself is an error (the text is then the
+ * error report, which the caller returns as is, like the original does). */
+static char *esd_call(const char *pkg, const char *macro, const char *arg,
+                      const char *body, int *failed)
+{
+    *failed = 0;
+    if (EsdLoaded && strcmp(pkg, "esd") == 0) {
+        if (!strcmp(macro, "::command"))   return esd_command(arg);
+        if (!strcmp(macro, "::nocommand")) return esd_nocommand();
+        if (!strcmp(macro, "::include"))   return esd_include(arg, body);
+        if (!strcmp(macro, "::execute"))   return esd_execute(arg);
+    }
+    char msg[768];
+    if (strcmp(pkg, "esd") == 0)
+        snprintf(msg, sizeof msg, "Extension macro resulted the error: Undefined "
+                 "subroutine &jamal::esd%s called", macro);
+    else
+        snprintf(msg, sizeof msg, "Extension macro resulted the error: only the "
+                 "esd extension module is built into this jamal, not jamal::%s",
+                 pkg);
+    *failed = 1;
+    return Error(msg, body);
+}
 /* The macro evaluator.  `input` is the text between the delimiters: the leading
  * `#`, `@` or `?` is still part of it, exactly as in the original. */
 static char *EvalMacro(const char *input, const char *refFile, int level)
@@ -1578,17 +2473,33 @@ static char *EvalMacro(const char *input, const char *refFile, int level)
     if (builtin) {
         const char *rest = NULL;
 
-        /* Perl module extension macro `{base::Macro args}`.  The original can
-         * only do this by eval()ing Perl, so the extension modules cannot be
-         * supported here; the same kind of diagnostic is reported. */
+        /* Perl module extension macro `{base::Macro rest}`.  The original
+         * evals `&jamal::<base>::<macro>(<rest>)' so that the extension package
+         * does the parsing; this port implements the one extension module the
+         * tree uses, esd, and reports the others the way a module that cannot
+         * be loaded is reported. */
         {
             const char *p = body;
             while (p_isword(*p)) p++;
             if (p[0] == ':' && p[1] == ':') {
-                char *r = Error("Extension macro resulted the error: this port "
-                                "cannot load Perl extension modules.", body);
+                const char *baseEnd = p;
+                const char *q = p;
+                while (q[0] == ':' && q[1] == ':' && p_isword(q[2])) {
+                    q += 2;
+                    while (p_isword(*q)) q++;
+                }
+                char *base  = xmemdup(body, (size_t)(baseEnd - body));
+                char *macro = xmemdup(p, (size_t)(q - p));
+                const char *pkg = *base ? base : (BaseModule ? BaseModule : "");
+                const char *arg = q;   /* the rest, leading spaces included */
+                int failed = 0;
+                char *result = esd_call(pkg, macro, arg, body, &failed);
+                char *out = failed ? result : DoInput(result, refFile, level + 1);
+                if (!failed) free(result);
+                free(base);
+                free(macro);
                 free(body);
-                return r;
+                return out;
             }
         }
 
@@ -1632,6 +2543,26 @@ static char *EvalMacro(const char *input, const char *refFile, int level)
         if (after_prefix_nonword(body, "use", &rest)) {
             Vec *l = Split(rest, 2);
             const char *package = vec_get(l, 0);
+            const char *version = vec_get(l, 1);
+            if (package && strcmp(package, "esd") == 0) {
+                /* esd.pm ships with the tree and is built into this port */
+                if (EsdLoaded) Warning("Extension esd is already loaded.", body);
+                EsdLoaded = 1;
+                /* esd.pm calls jamal::version('1.0','2.0') */
+                if (version && *version && (p_num(version) > 2.0 || p_num(version) < 1.0)) {
+                    char msg[256];
+                    snprintf(msg, sizeof msg,
+                             "Extension esd does not implement the requested version %s.",
+                             version);
+                    fatal(msg, body);
+                }
+                vec_push(BaseModules, xstrdup(BaseModule ? BaseModule : ""));
+                free(BaseModule);
+                BaseModule = xstrdup("esd");
+                vec_free(l);
+                free(body);
+                return xstrdup("");
+            }
             char msg[512];
             snprintf(msg, sizeof msg,
                      "Extension %s is not found. Error message: this port cannot "

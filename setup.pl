@@ -154,34 +154,17 @@ print "This is ", $unix ? $unix : 'NT' , " cwd=$cwd\n";
 my $build = $unix ? $unix : "nt";
 
 #
-# Check that esd.pm is installed for Jamal
+# Find the installed esd.pm, the jamal extension module the Perl fallback needs.
 #
-$esdlocation = undef;
-for (@INC){
-  next if /\./;
-  if( -e "$_/jamal/esd.pm" ){
-    $esdlocation = "$_/jamal/esd.pm";
+sub find_esd {
+  $esdlocation = undef;
+  for (@INC){
+    next if /\./;
+    if( -e "$_/jamal/esd.pm" ){
+      $esdlocation = "$_/jamal/esd.pm";
+      }
     }
-  }
-if( ! defined $esdlocation ){
-  print <<END;
-The jamal module esd.pm is not installed.
-You have to install it before running any
-kind of ScriptBasic source compilation.
-The module is needed to compile source
-documentation. This is a MUST.
-
-To install esd.pm become root on UNIX,
-or just have write privilege for the
-directories where the Perl modules are
-(this is the 'source' directory of ScriptBasic)
-and run
-
-perl jamal.pl -i
-
-interactively answering the program questions.
-END
-  exit 1;
+  return defined $esdlocation;
   }
 
 #
@@ -194,7 +177,13 @@ END
 #
 sub pick_jamal {
   $jamal = $unix eq "nt" ? "bin\\tools\\jamal.exe" : "bin/tools/jamal";
+  $t2h   = $unix eq "nt" ? "bin\\tools\\t2h.exe"   : "bin/tools/t2h";
   $jamal = "perl jamal.pl" unless -e $jamal;
+  $t2h   = "perl t2h.pl"   unless -e $t2h;
+  # the definition the generated makefiles get; {SourceRoot} is expanded by
+  # jamal when the macro is used, so the makefiles stay free of a fixed path
+  $jamaldefine = $jamal =~ /^perl / ? "perl {SourceRoot}jamal.pl" : "{SourceRoot}bin/tools/jamal";
+  $t2hdefine   = $t2h   =~ /^perl / ? "perl {SourceRoot}t2h.pl"   : "{SourceRoot}bin/tools/t2h";
   }
 &pick_jamal;
 
@@ -419,24 +408,48 @@ if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them 
   system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
   }
 &pick_jamal;
-print "The jamal tool is not built, falling back to perl jamal.pl\n" if $jamal =~ /^perl /;
+if( $jamal =~ /^perl / ){
+  print "The jamal tool is not built, falling back to perl jamal.pl\n";
+  # the C jamal (bin/tools/jamal) has the esd extension module built in, the
+  # Perl original loads it as jamal/esd.pm and cannot run without it
+  if( ! &find_esd ){
+    print <<END;
+The jamal module esd.pm is not installed.
+You have to install it before running any
+kind of ScriptBasic source compilation.
+The module is needed to compile source
+documentation. This is a MUST.
+
+To install esd.pm become root on UNIX,
+or just have write privilege for the
+directories where the Perl modules are
+(this is the 'source' directory of ScriptBasic)
+and run
+
+perl jamal.pl -i
+
+interactively answering the program questions.
+END
+    exit 1;
+    }
+  }
 
 if( ! $OPT{'--no-makefile'} ){# default is to create the makefiles
   print "compiling Makefile using the Jamal preprocessor\n";
   if( $unix eq "unix" ){
-    &logit("$jamal -m make_gcc.jim makefile.jam bin/make/Makefile");
-    `$jamal -m make_gcc.jim makefile.jam bin/make/Makefile`;
+    &logit("$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_gcc.jim makefile.jam bin/make/Makefile");
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_gcc.jim makefile.jam bin/make/Makefile`;
     }
   elsif( $unix eq "darwin" ){
-    &logit("$jamal -m make_darwin.jim makefile.jam bin/make/Makefile");
-    `$jamal -m make_darwin.jim makefile.jam bin/make/Makefile`;
+    &logit("$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_darwin.jim makefile.jam bin/make/Makefile");
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_darwin.jim makefile.jam bin/make/Makefile`;
     }
 else{
     # compile the makefiles from source (note that directory.jim is ready already)
-    &logit("$jamal -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile");
-    `$jamal -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile`;
-    &logit("$jamal -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile");
-    `$jamal -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile`;
+    &logit("$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile");
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_vc7.jim makefile.jam bin\\vc7\\make\\makefile`;
+    &logit("$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile");
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_bcc.jim makefile.jam bin\\bcc\\make\\makefile`;
     # compile the packing cmd file. It needs Jamal to have the version and build correctly
     #&logit("perl jamal.pl pack.cmd.jam pack.cmd");
     #`perl jamal.pl pack.cmd.jam pack.cmd`
@@ -843,19 +856,19 @@ sub configure_module {
   # no reason to run the preprocessing
   if( $unix eq "unix" ){
     print "Processing jamal files creating makefile\n";
-    `$jamal -m make_gcc.jim extensions/$module/makefile.jam extensions/$module/makefile`
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_gcc.jim extensions/$module/makefile.jam extensions/$module/makefile`
        unless -e "extensions/$module/notunix.txt";
     }
   elsif( $unix eq "darwin" ){
     print "Processing jamal files creating makefile\n";
-    `$jamal -m make_darwin.jim extensions/$module/makefile.jam extensions/$module/makefile`
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_darwin.jim extensions/$module/makefile.jam extensions/$module/makefile`
        unless -e "extensions/$module/notdarwin.txt";
     }else{
     print "Processing jamal files creating makefile.vc7\n";
-    `$jamal -m make_vc7.jim extensions/$module/makefile.jam extensions/$module/makefile.vc7`
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_vc7.jim extensions/$module/makefile.jam extensions/$module/makefile.vc7`
        unless -e "extensions/$module/notnt.txt";
     print "Processing jamal files creating makefile.bcc\n";
-    `$jamal -m make_bcc.jim extensions/$module/makefile.jam extensions/$module/makefile.bcc`
+    `$jamal -DJAMAL='$jamaldefine' -DT2H='$t2hdefine' -m make_bcc.jim extensions/$module/makefile.jam extensions/$module/makefile.bcc`
        unless -e "extensions/$module/notnt.txt";
     }
 

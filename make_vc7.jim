@@ -16,6 +16,7 @@ The C compiler is 'cl'
 {#define CcOptOutput/X=/FoX}
 {#define CcOptInput/X=X}
 {#define CcOptCompile=/c}
+{#define CcOptPIC=}
 {#define CcOptDefine/X=-DX}
 
 {#define lib=lib /nologo}

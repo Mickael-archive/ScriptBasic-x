@@ -39,18 +39,17 @@ Every file in the tree that contains Jamal macros (104 of them: `makefile.jam`,
 `texi/*.texi.jam` documentation set) and 34 additional stress files were compared
 against the Perl original: same stdout byte for byte, same exit status.
 
-`jamal.pl` itself stays in the tree as the documentation preprocessor, because
-the texi sources pull in the **esd** extension module (`{#use esd}`,
-`{#esd::include ...}`) and a C program cannot load Perl extension packages.
-`setup.pl` uses `bin/tools/jamal` when it exists and falls back to
-`perl jamal.pl` when it does not, and `make_common.jim` keeps `JAMAL`/`T2H`
-pointing at Perl for that reason.
+`jamal.pl` stays in the tree as the reference implementation. The build uses
+`bin/tools/jamal`; `make_common.jim` declares `JAMAL` and `T2H` with `{#define?}`,
+and `setup` passes the Perl spelling of them on the command line only when the
+binaries have not been built, so such a tree falls back to the Perl originals
+instead of failing.
 
 Known differences from the Perl original:
 
 | Feature | Behaviour |
 |---------|-----------|
-| Perl extension modules (`{#use x}`, `{#base::macro ...}`) | not available; reported as an error like the original does for a module that cannot be loaded |
+| Perl extension modules (`{#use x}`, `{#base::macro ...}`) | not available; reported as an error like the original does for a module that cannot be loaded. The `esd` module the documentation uses **is** built in, see the next section |
 | `{#with pkg}` | the original stores an array reference where a scalar is expected and dies at run time for every reachable input; this port switches the base module instead |
 | `{#dir ...}` | not implemented (unused anywhere in the tree); reported as an error |
 | division by zero in an operational macro | the original dies with `Illegal division by zero at jamal.pl line 912.` and status 2; the same text and status are printed |
@@ -58,6 +57,40 @@ Known differences from the Perl original:
 One detail worth knowing: the original skips only spaces and newlines after the
 macro delimiter, because it compares a bareword `char` against tab and carriage
 return in a way that can never match. The port does the same.
+
+## The documentation chain: `esd` and `t2h`
+
+The texi sources pull the documented source files in through the `esd` Jamal
+extension module (`esd.pm`): `{#esd::command n s{...}{...}}` registers a
+substitution that is then applied to every line of what `{#esd::include file}`
+reads. `tools/codegen/jamal.c` implements that module, so `{#use esd}` works
+without a Perl interpreter, and `tools/codegen/t2h.c` is a port of `t2h.pl`, the
+texi to html converter that turns `bin/texi/mod_*.texi` into the html pages. The
+module makefiles run both of them, so `./setup --unix` now builds the code and
+the documentation without invoking Perl.
+
+Evidence, against the Perl originals on the same input:
+
+| Check | Result |
+|-------|--------|
+| the 48 `*.texi.jam` inputs (26 guides under `texi/`, 22 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | output file, stdout and exit status identical, byte for byte |
+| the `esd` substitution engine: every `esd::command` of the tree, applied to 4 516 lines of the real documentation | 126 448 substitutions, all identical |
+| the 48 documents produced above through `perl t2h.pl` vs `bin/tools/t2h` | 1 721 of the 1 722 output files identical |
+
+Differences, all of them places where the Perl original depends on the
+unordered iteration of a hash:
+
+| Feature | Behaviour |
+|---------|-----------|
+| order of the `esd::command` substitutions | `esd.pm` keeps them in a hash and applies them in `keys %COMMAND` order, which is a different order on every run of the same Perl; this port applies them sorted by key, the order the shipped `*.texi.jam` files are written for |
+| order of the `.hhk` index entries | `t2h.pl` writes them in hash order too; the port writes them sorted. This is the single file of the 1 722 that is not byte identical, and the original cannot even be compared with itself: two runs on the same input produce two different files |
+| Perl regular expressions in `{#esd::command ...}` | only the subset the shipped files use is understood -- literals, escapes, `.`, `^`, `$`, character classes, groups, lazy quantifiers, the `g` flag. Anything else is reported as an unsupported command instead of being silently mis-applied |
+
+A gap that is **not** from this port: `extensions/*/manual.texi.jam` include
+`../../html/texi/skeleton.jim`, a file that does not exist in the tree (nor in
+the history), so those 15 module manuals come out empty. `perl jamal.pl` prints
+the same "cannot be opened" message and writes the same empty file, which is why
+the comparison above passes; the module manual pages need that include fixed.
 
 ## The setup program
 
@@ -107,6 +140,19 @@ The shell script `setup` had two defects of its own, fixed along the way: it was
 not executable (mode 644, so `make all` could not run it) and its CRLF line
 endings made the `#! /bin/sh` line unusable on UNIX.
 
+
+## `-fPIC` for the module shared objects (`CcOptPIC`)
+
+The module makefiles compiled their objects without `-fPIC` and then linked the
+shared object with `ld -shared`, which the current GNU linker refuses
+(`relocation R_X86_64_PC32 ... recompile with -fPIC`). That is why `cgi`, `dbg`
+and `trial` did not build. `make_gcc.jim` and `make_darwin.jim` now define
+`{#define CcOptPIC=-fPIC}` (empty in `make_bcc.jim` and `make_vc7.jim`, where the
+flag does not exist), and the `{cc}` command of every `extensions/*/makefile.jam`
+uses it in front of `{CcOptCompile}`. Those three modules now build their
+objects, their `.so` and their `.a`; the other modules that still fail need
+their optional libraries installed (libxml2, zlib, curl, a regex library,
+mysql, gd, ncurses, odbc, postgres, berkeley db).
 
 ## Legacy makefiles
 
@@ -159,15 +205,14 @@ Only code that has not been ported yet, or historical documents:
 * `setup.pl` is the Perl driver of the build. It is no longer the entry point
   (`./setup` runs the C driver, see above) and the build does not need it, but it
   still works and drives the same C tools, so it is kept next to the C port.
-* `jamal.pl` (kept for the `esd` documentation files, see above),
-  and the documentation chain: `t2h.pl`, `esd2html.pl`, `esd2texi.pl`,
-  `esd2any.pl`, `esdcnv.pl`, `ssplit.pl`, `mkweb.pl`, `mkcdoc.pl`,
-  `mkscribadef.pl`, `moduletablemaker.pl`, `statltmaker.pl`, `lmt_help.pl`,
-  `preparedeb.pl`, `heber.pl`, `convert.pl`, `scriba-rpm.pl`, `scriba-tar.pl`,
-  `scriba-zip.pl`, `esd.pm`.
+* the reference originals `jamal.pl`, `t2h.pl` and `esd.pm` (the build uses the
+  C ports, see above), and the rest of the documentation and packaging chain:
+  `esd2html.pl`, `esd2texi.pl`, `esd2any.pl`, `esdcnv.pl`, `ssplit.pl`,
+  `mkweb.pl`, `mkcdoc.pl`, `mkscribadef.pl`, `moduletablemaker.pl`,
+  `statltmaker.pl`, `lmt_help.pl`, `preparedeb.pl`, `heber.pl`, `convert.pl`,
+  `scriba-rpm.pl`, `scriba-tar.pl`, `scriba-zip.pl`.
 * The `.cmd` command files that drive them, `mkth*.cmd`, `mktexihtml.cmd`,
-  `mkweb.cmd`, `mkcdoc.cmd`, `mksamples.cmd`, `modconfigure.cmd`, `setup.cmd`
-  and the `extensions/*/makefile` rules that run `jamal.pl` / `t2h.pl`.
+  `mkweb.cmd`, `mkcdoc.cmd`, `mksamples.cmd`, `modconfigure.cmd`, `setup.cmd`.
 * `Makefile.nt.jam` no longer uses Perl for the code generators, but it still
   runs `perl esd2html.pl` (source documentation) and `perl mkscribadef.pl`
   (the export definition file), neither of which is ported yet.
