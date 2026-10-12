@@ -5,7 +5,7 @@ CC     ?= gcc
 CFLAGS ?= -std=c2x -O2 -Wall -Wextra
 BIN    := ../../bin/tools
 
-all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer $(BIN)/jamal
+all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer $(BIN)/jamal $(BIN)/setup
 
 $(BIN)/lmt_make: lmt_make.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
@@ -24,3 +24,6 @@ $(BIN)/syntaxer: syntaxer.c | $(BIN)
 
 $(BIN)/jamal: jamal.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
+
+$(BIN)/setup: setup.c setup_data.h setup_text.h | $(BIN)
+	$(CC) $(CFLAGS) -I. -o $@ setup.c

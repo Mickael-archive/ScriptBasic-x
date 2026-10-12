@@ -2023,9 +2023,9 @@ To compile the code you have to issue the command
 
 This will run all the commands that are needed before compilation to generate the C source files from the “real” source files and also compiles the make files from their macro source. Finally it runs the compilation processes.
 
-The program @file{setup.pl} started by the shell script @file{setup} is a huge Perl script that automates the compilation under UNIX and under Windows NT as well.
+The shell script @file{setup} builds the helper tools and then runs the setup program, which is a C program now (@file{tools/codegen/setup.c}) and automates the compilation under UNIX and under Windows NT as well. The Perl driver @file{setup.pl} is still in the distribution; it does the same, through the same helper tools.
 
-To install the compiled code the script @file{setup.pl} has to be started again, this time using the argument:
+To install the compiled code the script @file{setup} has to be started again, this time using the argument:
 
 @example
 ./setup –-install

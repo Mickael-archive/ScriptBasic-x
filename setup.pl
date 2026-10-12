@@ -184,6 +184,20 @@ END
   exit 1;
   }
 
+#
+# The Jamal preprocessor is a C program now (tools/codegen/jamal.c).  The Perl
+# original is kept for the documentation files that use the esd extension
+# module, which a C program cannot load, and it is used as a fallback when the
+# C tool has not been built.  The choice is made here, before the branches
+# below, because the --module path runs the preprocessor too, and it is made
+# again after the tools have been built.
+#
+sub pick_jamal {
+  $jamal = $unix eq "nt" ? "bin\\tools\\jamal.exe" : "bin/tools/jamal";
+  $jamal = "perl jamal.pl" unless -e $jamal;
+  }
+&pick_jamal;
+
 # this option is used to create the ZIP file creator cmd file
 if( defined $OPT{'--zip'} ){
   my $InstallDirectory = $OPT{'--directory'};
@@ -404,19 +418,8 @@ if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them 
   &logit("make -C tools/codegen");
   system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
   }
-
-
-#
-# The Jamal preprocessor is a C program now (tools/codegen/jamal.c).  The Perl
-# original is kept for the documentation files that use the esd extension
-# module, which a C program cannot load, and it is used as a fallback when the
-# C tool has not been built.
-#
-$jamal = $unix eq "nt" ? "bin\\tools\\jamal.exe" : "bin/tools/jamal";
-unless( -e $jamal ){
-  print "The jamal tool '$jamal' is not built, falling back to perl jamal.pl\n";
-  $jamal = "perl jamal.pl";
-  }
+&pick_jamal;
+print "The jamal tool is not built, falling back to perl jamal.pl\n" if $jamal =~ /^perl /;
 
 if( ! $OPT{'--no-makefile'} ){# default is to create the makefiles
   print "compiling Makefile using the Jamal preprocessor\n";

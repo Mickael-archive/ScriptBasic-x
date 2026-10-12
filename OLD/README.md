@@ -8,7 +8,8 @@ generated from, or shipped**.
 
 The following Perl scripts used to generate C sources at build time. They have
 been ported to portable C23 programs that produce byte-identical output and are
-now built and invoked by `setup.pl` / `makefile.jam` / `Makefile.nt.jam`:
+now built and invoked by the `setup` script / `setup.pl` / `makefile.jam` /
+`Makefile.nt.jam`:
 
 | Archived Perl script | C replacement               | Generates                              |
 |----------------------|-----------------------------|----------------------------------------|
@@ -30,8 +31,8 @@ well.
 
 ## The Jamal preprocessor
 
-`tools/codegen/jamal.c` is a full port of the macro processor. `setup.pl` builds
-it with the other tools and runs it to generate `bin/make/Makefile` and the
+`tools/codegen/jamal.c` is a full port of the macro processor. `setup` builds it
+with the other tools and runs it to generate `bin/make/Makefile` and the
 `extensions/*/makefile` files, so the **compilation flow needs no Perl at all**.
 Every file in the tree that contains Jamal macros (104 of them: `makefile.jam`,
 `*.jim`, the `extensions/*/makefile.jam` module makefiles and the whole
@@ -57,6 +58,55 @@ Known differences from the Perl original:
 One detail worth knowing: the original skips only spaces and newlines after the
 macro delimiter, because it compares a bareword `char` against tab and carriage
 return in a way that can never match. The port does the same.
+
+## The setup program
+
+`tools/codegen/setup.c` is the C port of `setup.pl`. The UNIX entry point is the
+shell script `setup` in the top directory:
+
+    ./setup
+
+which builds the tools in `tools/codegen` and then runs `bin/tools/setup`
+(`make` and `make install` call the same script). The Perl driver `setup.pl` is
+still in the tree and still works (`perl setup.pl --unix`), but it is no longer
+needed: it drives the same C tools. The port was checked against the Perl
+original by building the whole tree twice from the same clean checkout, once with
+each driver:
+
+| Check | Result |
+|-------|--------|
+| complete build | both exit with status 0 |
+| every file of the two trees (813 of them, with the `--install` case run too) | identical, once the directory the tree was built in is normalised |
+| the two generated binaries (`scriba`, `scribacmd.o`) | differ only in the compilation time the compiler stamps into them |
+| `setup.log`, the ordered log of every command that ran | identical, line for line, timestamps apart |
+| the same build with the output going to a terminal | identical, line for line |
+| `--help`, `--check`, `--self-check`, `--module=hash`, `--module=<new module>`, `--unix --nt`, `--badoption`, `--no-tools --unix --no-compile`, `--install --no-install-interactive` | identical stdout and exit status |
+| the skeleton files of a brand new module | identical |
+| `install.sh`, `mkrpm.sh`, `mkdeb.sh`, `etc-init.d-sbhttpd`, `scriba.conf.unix.lsp`, `compile` | identical |
+
+The one value that cannot be reproduced is the `maxlevel` number `--install`
+probes for: the original runs `scriba` into an endless recursion and takes the
+length of the line the crashed interpreter left in `depth.txt`. That length
+varies by some 0.1% from run to run on the same machine, so
+`scriba.conf.unix.lsp` reports a slightly different number every time, whichever
+driver is used; everything else in the file is identical.
+
+Two places where the original depends on the order of a Perl hash (which Perl
+randomises in every process) iterate the table in order here, which makes the
+output reproducible: the option named in the "Invalid option" message, and the
+order of the interactive `--install` questions.
+
+The data the original carries inline - the `%HELP` texts, the `%SKELETONS`
+module files, the installation defaults and every shell and configuration
+template - lives in `tools/codegen/setup_data.h` and
+`tools/codegen/setup_text.h`. Both are checked in, so the build needs no Python;
+`tools/codegen/extract_setup_data.py` regenerates them from `setup.pl`, and has
+to be run again only when the texts change there.
+
+The shell script `setup` had two defects of its own, fixed along the way: it was
+not executable (mode 644, so `make all` could not run it) and its CRLF line
+endings made the `#! /bin/sh` line unusable on UNIX.
+
 
 ## Legacy makefiles
 
@@ -106,7 +156,10 @@ The web **content** stays in place: `html/source.txt`, `html/examples/source.ssp
 
 Only code that has not been ported yet, or historical documents:
 
-* `jamal.pl` (kept for the `esd` documentation files, see above), `setup.pl`,
+* `setup.pl` is the Perl driver of the build. It is no longer the entry point
+  (`./setup` runs the C driver, see above) and the build does not need it, but it
+  still works and drives the same C tools, so it is kept next to the C port.
+* `jamal.pl` (kept for the `esd` documentation files, see above),
   and the documentation chain: `t2h.pl`, `esd2html.pl`, `esd2texi.pl`,
   `esd2any.pl`, `esdcnv.pl`, `ssplit.pl`, `mkweb.pl`, `mkcdoc.pl`,
   `mkscribadef.pl`, `moduletablemaker.pl`, `statltmaker.pl`, `lmt_help.pl`,

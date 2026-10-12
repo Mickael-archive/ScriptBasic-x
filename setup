@@ -1,2 +1,20 @@
 #! /bin/sh
-perl setup.pl --unix $*
+#
+# The UNIX entry point of the ScriptBasic build.
+#
+# It builds the C helper tools in tools/codegen - the code generators, the Jamal
+# preprocessor and this setup program itself - and then runs setup, which is
+# written in C now.  The Perl driver is still in the tree and still works:
+#
+#   perl setup.pl --unix
+#
+# but it is not needed any more, it runs the very same C tools.
+#
+if [ ! -x bin/tools/setup ]; then
+  make -C tools/codegen || {
+    echo "Can not build the tools in tools/codegen, falling back to perl setup.pl" >&2
+    exec perl setup.pl --unix "$@"
+    }
+  fi
+
+exec bin/tools/setup --unix "$@"
