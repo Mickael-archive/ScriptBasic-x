@@ -18,7 +18,7 @@ Files
 README.pgsql: this documentation
 extensions/pgsql/pgsqlinterf.c: C source
 include/pgsql.bas: .bas module interface
-Makefile.sample.pgsql: sample Makefile, provided as-is
+OLD/Makefile.sample.pgsql: sample Makefile, provided as-is (moved to the OLD/ directory: it used the Perl code generators that no longer exist)
 
 Compilation
 ~~~~~~~~~~~

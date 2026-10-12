@@ -59,20 +59,30 @@ clean:
 #
 # R E S U L T  F I L E S
 #
+# The code generators used to be Perl scripts (generrh.pl, headerer.pl,
+# lmt_make.pl, syntaxer.pl). They are C programs now: they live in
+# tools/codegen and have to be compiled into bin\tools before this
+# makefile is used, the same way the UNIX build does it:
+#
+#     cd tools\codegen  &&  make
+#
+# Any C compiler supporting C99 can build them; the executables are
+# bin\tools\generrh.exe, headerer.exe, lmt_make.exe and syntaxer.exe.
+#
 # --------------------------------------------------------------------
 headers : *.c extensions/cgi/cgi.c errcodes.c extensions/rpool.c syntax.c notimp.c
-	perl headerer.pl $?
+	bin\tools\headerer.exe $?
 
 # --------------------------------------------------------------------
 #
 # STATIC LINK MODULE LIST TABLE FILES
 #
 # --------------------------------------------------------------------
-lmt_none.c : lmt_none.def
-	perl lmt_make.pl $?
+lmt_none.c : lmt_none.def bin\tools\lmt_make.exe
+	bin\tools\lmt_make.exe lmt_none.def
 
-lmt_httpd.c : lmt_httpd.def
-	perl lmt_make.pl $?
+lmt_httpd.c : lmt_httpd.def bin\tools\lmt_make.exe
+	bin\tools\lmt_make.exe lmt_httpd.def
 
 # --------------------------------------------------------------------
 #
@@ -280,11 +290,11 @@ md5.obj : tools/md5.c tools/md5.h tools/global.h
 md5_omg.obj : tools/md5.c tools/md5.h tools/global.h
 	$(BCC) $(BCFLAGS) -c -omd5_omg.obj tools/md5.c
 
-syntax.c : syntax.def
-	perl syntaxer.pl
+syntax.c : syntax.def bin\tools\syntaxer.exe
+	bin\tools\syntaxer.exe
 
-command.h : command.c
-	perl headerer.pl command.c
+command.h : command.c bin\tools\headerer.exe
+	bin\tools\headerer.exe command.c
 
 #
 # Command OBJs
@@ -358,7 +368,7 @@ dbg_con.obj : preproc/dbg/dbg_con.c preproc/dbg/dbg.h preproc/dbg/dbg_comm.h
 #
 # Generated C files
 #
-errcodes.c : errors.def
-	perl generrh.pl
+errcodes.c : errors.def bin\tools\generrh.exe
+	bin\tools\generrh.exe
 
 

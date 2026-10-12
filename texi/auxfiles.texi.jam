@@ -371,7 +371,7 @@ This script read the C source files one-by-one that are given on the command lin
 
 Note that in case the C file was not changed and thus the new header file is the same as the old one the program does not touch the header file and this way it does not force and @code{make} utility to recompile the source useless.
 
-This script has been replaced by the C program @file{tools/codegen/headerer.c} and has been moved to the @file{OLD/} directory. The ScriptBasic re-implementation @file{headerer.bas} is superseded by the same tool.
+This script has been replaced by the C program @file{tools/codegen/headerer.c} and has been moved to the @file{OLD/} directory. The ScriptBasic re-implementation @file{headerer.bas} is superseded by the same tool and has been moved to the @file{OLD/} directory as well.
 
 [[[NoSourceCode]]]
 
