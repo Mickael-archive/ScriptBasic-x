@@ -23,15 +23,11 @@ output order to be reproducible.
 
 ## Known remaining mentions (for later cleanup steps)
 
-The Perl scripts are gone from the build, but some legacy names still appear:
+The Perl scripts are gone from the build and no generated file mentions them
+anymore, but some legacy build files still do:
 
-* The generated `errcodes.c`, `syntax.c`, `notimp.c`, `lmt_*.c` and
-  `include/error.bas` still carry a "...created by xxx.pl" banner because the
-  generators emit that text. The in-source comments and the `*.def` files have
-  already been updated to point at the C tools.
-* Legacy build files still contain `perl xxx.pl` recipes: `Makefile.nt.jam`
-  (Windows), `Makefile.old`, `Makefile.solaris` and
-  `extensions/psql/Makefile.sample.pgsql`.
+* `Makefile.nt.jam` (Windows), `Makefile.old`, `Makefile.solaris` and
+  `extensions/psql/Makefile.sample.pgsql` still contain `perl xxx.pl` recipes.
 * `html/source.txt` (historical web source) still names `syntaxer.pl`.
 * `headerer.bas`, a ScriptBasic re-implementation of `headerer.pl`, is superseded
   by the same C tool and is a candidate for this directory as well.
