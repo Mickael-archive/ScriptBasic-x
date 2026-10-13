@@ -113,7 +113,7 @@ This can be specified by the OS or the compiler specific macro file as well.
 {@define VarObj/X={vardir}{VARIATION}{DS}X{ObjectExtension}}
 
 {@comment VarC = variation source C file}
-{@define VarC/X=variations{DS}{VARIATION}{DS}X.c}
+{@define VarC/X=src{DS}variations{DS}{VARIATION}{DS}X.c}
 
 {@comment ------------------------------------------------------------------------------ }
 {@comment                  MACROS TO BE USED IN MAIN MAKEFILE                            }

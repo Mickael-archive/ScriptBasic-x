@@ -27,8 +27,8 @@
 [[[#esd::command X s{SAVEALLDOUBLESOBAKA}{\@\@}g]]]
 
 
-[[[@define SourceFile/FILE_NAME=[[[#esd::include ../FILE_NAME /*POD CUT*/]]] ]]]
-[[[@define SourceFileX/FILE_NAME=[[[#esd::include ../FILE_NAME =POD =CUT]]] ]]]
+[[[@define SourceFile/FILE_NAME=[[[#esd::include ../src/FILE_NAME /*POD CUT*/]]] ]]]
+[[[@define SourceFileX/FILE_NAME=[[[#esd::include ../src/FILE_NAME =POD =CUT]]] ]]]
 \input texinfo @c -*-texinfo-*-
 @c %**start of header
 @setfilename devguide
@@ -61,6 +61,16 @@ Published by @code{peter.verhas.com}
 
 
 @chapter Introduction
+
+@section Where the files are
+
+The C sources of the interpreter are in the @file{src} directory of the
+distribution, and the headers @file{headerer} extracts from them are written next
+to them, into @file{src} as well.  The tools of the build are in @file{build}: the
+C programs of @file{build/codegen} and the Windows command (@code{.cmd}) files.
+When the text below names a C file without a directory, it is the one in
+@file{src}.
+
 
 
 ScriptBasic is an open source scripting implementation of the programming language BASIC. The language and the implementation make the software a considerable choice in many cases when there is a need for some scripting tool. This software can be used where traditionally Perl, Python, TCL or some other scripting interpreter is used.
@@ -499,9 +509,9 @@ The field @code{pCSymbols} points to an array that is used only for debugging pu
 
 The rest of the variables are used by the functions that iterate through the list of tokens when the syntax analyzer reads the token list or to report errors during lexical analysis. Error reporting is detailed in a separate section.
 
-The tables that list the lexical elements are not maintained "by hand". The source for ScriptBasic syntax is maintained in the file @file{syntax.def} and the program @file{tools/codegen/syntaxer.c} creates the C syntax file @file{syntax.c} from the syntax definition.
+The tables that list the lexical elements are not maintained "by hand". The source for ScriptBasic syntax is maintained in the file @file{syntax.def} and the program @file{build/codegen/syntaxer.c} creates the C syntax file @file{syntax.c} from the syntax definition.
 
-The program @file{tools/codegen/syntaxer.c} is so complex that after two years I wrote it I had hard time to understand it and I rather treat it as a holly code: blessed and untouchable. (Ok: see: that code is quite compound, but if there was any bug found in that I could understand what I did in a few hours. Anyway, the brain created that code once belonged to me.)
+The program @file{build/codegen/syntaxer.c} is so complex that after two years I wrote it I had hard time to understand it and I rather treat it as a holly code: blessed and untouchable. (Ok: see: that code is quite compound, but if there was any bug found in that I could understand what I did in a few hours. Anyway, the brain created that code once belonged to me.)
 
 [[[#define FUNCTIONSIMPLEMENTED=
 @subsection Functions implemented in this module
@@ -605,7 +615,7 @@ The symbolic definition elements are:
 @item
 @code{come_forward} These symbol definition elements should be used to define block and looping structures. Whenever an instruction like for/next or if/then/else is used it has to define where to continue execution based on the condition. The symbol definition elements go-forward and come-back place the current instruction location on a compile time stack. The symbol definition elements go-back and come-forward take the last element from the same stack. They also check that the location was placed on the stack by a matching construct, assuring that no out of order nesting structures appear, like @code{if/for/endif/next}.
 @end itemize
-Note that you can find other syntax definition elements in the file syntax.def. However these are converted to a character value by the tool @file{tools/codegen/syntaxer.c} These pseudo syntax definition elements are:
+Note that you can find other syntax definition elements in the file syntax.def. However these are converted to a character value by the tool @file{build/codegen/syntaxer.c} These pseudo syntax definition elements are:
 @itemize
 @item
 @code{nl} end of line ('\n' character)
@@ -1073,7 +1083,7 @@ The type of the object pointer is @code{pSbProgram}.
 
 @section Sample Embedding
 
-The best way of learning is learning by example. Therefore here we will discuss the most obvious embedding application: the command line variation of ScriptBasic. The command line variation of ScriptBasic can be found in the file @file{scribacmd.c} in the source directory @file{variations/standard}. You may also find there a file named @file{basiccmd.c} that contains the code that was used before the @code{scriba_} C API was introduced. Have a look at it and bless God you have the new API.
+The best way of learning is learning by example. Therefore here we will discuss the most obvious embedding application: the command line variation of ScriptBasic. The command line variation of ScriptBasic can be found in the file @file{scribacmd.c} in the source directory @file{src/variations/standard}. You may also find there a file named @file{basiccmd.c} that contains the code that was used before the @code{scriba_} C API was introduced. Have a look at it and bless God you have the new API.
 
 In this section we will present the code from the file, but for brevity some code will not be copied to here. Also note that the code is copied and as the program develops the actual code may change while the one copied here most probably remains the same. (The API definitions are not "hand" copied, but rather taken from the C file when the documentation is compiled, so whenever the API changes the new documentation recompiled reflects the change.)
 
@@ -1094,7 +1104,7 @@ The main program of the standalone variation is implemented in the file @file{sc
 #include "../../basext.h"
 @end example
 
-In case you miss the file @file{scriba.h} then you should generate it using the program @file{tools/codegen/headerer.c} which is part of the distribution. C header files in ScriptBasic are not maintained by themselves. The text is rather maintained inside the C code, and is extracted using this program. The reason for this is to eliminate the double maintenance of function prototypes in the C and in the header file.
+In case you miss the file @file{scriba.h} then you should generate it using the program @file{build/codegen/headerer.c} which is part of the distribution. C header files in ScriptBasic are not maintained by themselves. The text is rather maintained inside the C code, and is extracted using this program. The reason for this is to eliminate the double maintenance of function prototypes in the C and in the header file.
 
 The file @file{basext.h} is also @code{#include}d by the main program. This is not usually needed by other main programs. The standalone version needs it for the sole reason to be able to print out on the usage screen the extension module interface version that the actual interpreter support. This version is defined in the macro @code{INTERFACE_VERSION}. Other than that there is no reason or need to include any other file than @file{scriba.h}.
 
@@ -1517,7 +1527,7 @@ The basic program that uses the module includes the include file and it is ready
 
 @section Module Support Functions
 
-Module support functions and macros are to ease the life of the extension programmers. They are defined in the file @file{basext.c} and in the file @file{basext.h} generated from @file{basext.c} using the tool @file{tools/codegen/headerer.c}.
+Module support functions and macros are to ease the life of the extension programmers. They are defined in the file @file{basext.c} and in the file @file{basext.h} generated from @file{basext.c} using the tool @file{build/codegen/headerer.c}.
 
 It is highly recommended that the extensions use these functions and that the extensions use the macros to call the functions the way the documentation suggests. The reason for this is to create readable code and to provide maintainability.
 
@@ -2023,7 +2033,7 @@ To compile the code you have to issue the command
 
 This will run all the commands that are needed before compilation to generate the C source files from the “real” source files and also compiles the make files from their macro source. Finally it runs the compilation processes.
 
-The shell script @file{setup} builds the helper tools and then runs the setup program, which is a C program now (@file{tools/codegen/setup.c}) and automates the compilation under UNIX and under Windows NT as well. The Perl driver @file{setup.pl} is still in the distribution; it does the same, through the same helper tools.
+The shell script @file{setup} builds the helper tools and then runs the setup program, which is a C program now (@file{build/codegen/setup.c}) and automates the compilation under UNIX and under Windows NT as well. The Perl driver @file{setup.pl} is still in the distribution; it does the same, through the same helper tools.
 
 To install the compiled code the script @file{setup} has to be started again, this time using the argument:
 

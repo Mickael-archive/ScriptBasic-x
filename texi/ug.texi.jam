@@ -382,7 +382,7 @@ To install from sources you have to compile ScriptBasic first. The process of co
 
 ScriptBasic does not require installation to use the basic features. Installation and configuration is required to enable ScriptBasic to use advanced features like, loading external modules.
 
-After compilation you can run the BASIC program @file{install.sb} using the freshly compiled executable @file{scriba.exe}. This program will partially install ScriptBasic into a directory. To start the program use the command file @file{install.cmd}.
+After compilation you can run the BASIC program @file{install.sb} using the freshly compiled executable @file{scriba.exe}. This program will partially install ScriptBasic into a directory. To start the program use the command file @file{build/install.cmd}.
 
 After you have done this you may want to alter the system @code{PATH} to include the directory where the executable is. In case you use the default installation directory this is
 
@@ -678,7 +678,7 @@ UNIX installations try to locate the configuration file from the environment var
 
 Note that if the file defined in the environment variable @var{SCRIBACONF} is non-existent or is invalid ScriptBasic does not try to load the configuration from the default configuration file.
 
-If you can not configure ScriptBasic configuration file name using environment variables or the system registry under Windows NT you can modify the source file @file{scriba.c}. You have to alter the function @code{scriba_LoadConfiguration}.
+If you can not configure ScriptBasic configuration file name using environment variables or the system registry under Windows NT you can modify the source file @file{src/scriba.c}. You have to alter the function @code{scriba_LoadConfiguration}.
 
 <%USEOPTIONF%>
 
@@ -956,7 +956,7 @@ You may also consider recompiling the ScriptBasic interpreter to statically link
 
 Currently Visual C command line @code{cl} and Borland command line @code{bcc32} compilers are supported.
 
-There are two command files that you can find in the @code{bin} directory under the installation directory. These are @file{bascl.cmd} to automate the compilation using the Microsoft compiler and @file{basbcc32} to automate the compilation using the Borland compiler.
+There are two command files in the @file{build} directory of the source tree. These are @file{bascl.cmd} to automate the compilation using the Microsoft compiler and @file{basbcc32.cmd} to automate the compilation using the Borland compiler.
 
 The @file{bin} directory also contains the files @file{libscriba.lib} and @file{libscriba.obj} to be used by the Microsoft compiler and linker, as well as 
 @file{libscriba_omg.lib} and @file{libscriba_omg.obj} to be used by the Borland compiler and linker.
@@ -969,7 +969,7 @@ cl /Ox /GA6s /DWIN32 /MT /nologo /W0 /c /Fo%1.obj %1.c
 cl /Ox /GA6s /DWIN32 /MT /nologo /W0 /Fe%1.exe %1.obj \ScriptBasic\bin\libscriba.obj \ScriptBasic\bin\libscriba.lib ws2_32.lib advapi32.lib
 @end example
 
-The content of the file @file{bascbcc32.cmd}:
+The content of the file @file{basbcc32.cmd}:
 
 @example
 scriba -n -Co %1.c %1.bas
@@ -1011,7 +1011,7 @@ After the file is created issue the command:
 bin/tools/lmt_make lmt_XXX.def
 @end example
 
-This will create the file @code{lmt_XXX.c}.
+This will create the file @code{src/lmt_XXX.c}.
 
 @b{THIS IS CHANGED TOTALLY FOR v1.0BUILD30 and ABOVE. TO BE REWRITTEN ALTER. ACTUALLY ALL THESE THINGS SHOULD GO INTO THE DEVELOPERS GUIDE!!}
 

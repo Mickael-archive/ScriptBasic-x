@@ -38,10 +38,10 @@ BCOBJS=environ_omg.obj external_omg.obj file_omg.obj function_omg.obj goto_omg.o
       if_omg.obj let_omg.obj mathfunc_omg.obj mathops_omg.obj print_omg.obj\
       string_omg.obj time_omg.obj while_omg.obj logger_omg.obj thread_omg.obj hndlptr_omg.obj\
       mygmtime_omg.obj basext_omg.obj
-CHEADERS=command.h errcodes.h report.h sym.h\
-         lexer.h expression.h builder.h memory.h\
-         syntax.h execute.h syntax.h myalloc.h filesys.h ipreproc.h prepext.h\
-         options.h uniqfnam.h
+CHEADERS=src/command.h src/errcodes.h src/report.h src/sym.h\
+         src/lexer.h src/expression.h src/builder.h src/memory.h\
+         src/syntax.h src/execute.h src/syntax.h src/myalloc.h src/filesys.h src/ipreproc.h src/prepext.h\
+         src/options.h src/uniqfnam.h
 LATEX=latex --quiet
 DVIPS=dvips -Ppdf
 
@@ -50,10 +50,10 @@ DVIPS=dvips -Ppdf
 ALL: headers scriba.exe cgi.dll gd.dll hash.dll re.dll sbhttpd.exe mt.dll noprint.dll\
  nt.dll zlib.dll cio.dll scriba.dll scriba.lib libscriba.lib libscriba_omg.lib tools.dll bdb.dll\
  mysql.dll dbg.dll odbc.dll scriba.conf curl.dll
-	install.cmd
+	build\install.cmd
 
 clean: 
-	rm *.o *.obj *.lib *.exe *.dll *.h *.exp *.tds *.map notimp.c scriba.conf syntax.c errcodes.c include/error.bas 
+	rm *.o *.obj *.lib *.exe *.dll src\*.h *.exp *.tds *.map src\notimp.c scriba.conf src\syntax.c src\errcodes.c include/error.bas 
 
 # --------------------------------------------------------------------
 #
@@ -61,17 +61,17 @@ clean:
 #
 # The code generators used to be Perl scripts (generrh.pl, headerer.pl,
 # lmt_make.pl, syntaxer.pl). They are C programs now: they live in
-# tools/codegen and have to be compiled into bin\tools before this
+# build/codegen and have to be compiled into bin\tools before this
 # makefile is used, the same way the UNIX build does it:
 #
-#     cd tools\codegen  &&  make
+#     cd build\codegen  &&  make
 #
 # Any C compiler supporting C99 can build them; the executables are
 # bin\tools\generrh.exe, headerer.exe, lmt_make.exe, syntaxer.exe,
 # mkscribadef.exe, jamal.exe, t2h.exe, mkcdoc.exe, ssplit.exe and setup.exe.
 #
 # --------------------------------------------------------------------
-headers : *.c extensions/cgi/cgi.c errcodes.c extensions/rpool.c syntax.c notimp.c
+headers : src/*.c extensions/cgi/cgi.c extensions/rpool.c
 	bin\tools\headerer.exe $?
 
 # --------------------------------------------------------------------
@@ -79,10 +79,10 @@ headers : *.c extensions/cgi/cgi.c errcodes.c extensions/rpool.c syntax.c notimp
 # STATIC LINK MODULE LIST TABLE FILES
 #
 # --------------------------------------------------------------------
-lmt_none.c : lmt_none.def bin\tools\lmt_make.exe
+src/lmt_none.c : lmt_none.def bin\tools\lmt_make.exe
 	bin\tools\lmt_make.exe lmt_none.def
 
-lmt_httpd.c : lmt_httpd.def bin\tools\lmt_make.exe
+src/lmt_httpd.c : lmt_httpd.def bin\tools\lmt_make.exe
 	bin\tools\lmt_make.exe lmt_httpd.def
 
 # --------------------------------------------------------------------
@@ -103,7 +103,7 @@ lmt_httpd.c : lmt_httpd.def bin\tools\lmt_make.exe
 scriba.dll : $(OBJS) $(COBJS) lmt_none.obj scriba.def
 	$(LD) $(LDOPTIONS) /Fescriba.dll $(OBJS) $(COBJS) $(LIBS) lmt_none.obj /link /DEF:scriba.def 
 
-scriba.def : scriba.c bin\tools\mkscribadef.exe
+scriba.def : src/scriba.c bin\tools\mkscribadef.exe
 	bin\tools\mkscribadef.exe
 
 #
@@ -205,32 +205,32 @@ odbc.dll : odbcinterf.obj
 #
 # Variations OBJs
 #
-scribacmd.obj : variations/standard/scribacmd.c getopt.h report.h\
-             lexer.h sym.h expression.h syntax.h reader.h myalloc.h\
-             builder.h memory.h execute.h buildnum.h conftree.h\
-             filesys.h 
-	$(CC) $(CFLAGS) /c /Foscribacmd.obj variations/standard/scribacmd.c
+scribacmd.obj : src/variations/standard/scribacmd.c src/getopt.h src/report.h\
+             src/lexer.h src/sym.h src/expression.h src/syntax.h src/reader.h src/myalloc.h\
+             src/builder.h src/memory.h src/execute.h src/buildnum.h src/conftree.h\
+             src/filesys.h 
+	$(CC) $(CFLAGS) /c /Foscribacmd.obj src/variations/standard/scribacmd.c
 
-websrv.obj : variations/httpd/websrv.c variations/httpd/service.h getopt.h report.h\
-             lexer.h sym.h expression.h syntax.h reader.h myalloc.h\
-             builder.h memory.h execute.h buildnum.h conftree.h\
-             filesys.h 
-	$(CC) $(CFLAGS) /c /Fowebsrv.obj variations/httpd/websrv.c
+websrv.obj : src/variations/httpd/websrv.c src/variations/httpd/service.h src/getopt.h src/report.h\
+             src/lexer.h src/sym.h src/expression.h src/syntax.h src/reader.h src/myalloc.h\
+             src/builder.h src/memory.h src/execute.h src/buildnum.h src/conftree.h\
+             src/filesys.h 
+	$(CC) $(CFLAGS) /c /Fowebsrv.obj src/variations/httpd/websrv.c
 
-service.obj : variations/httpd/service.c
-	$(CC) $(CFLAGS) /c /Foservice.obj variations/httpd/service.c
+service.obj : src/variations/httpd/service.c
+	$(CC) $(CFLAGS) /c /Foservice.obj src/variations/httpd/service.c
 
-libscriba.obj : variations/standalone/libscriba.c getopt.h report.h\
-             lexer.h sym.h expression.h syntax.h reader.h myalloc.h\
-             builder.h memory.h execute.h buildnum.h conftree.h\
-             filesys.h 
-	$(CC) $(CFLAGS) /c /Folibscriba.obj variations/standalone/libscriba.c
+libscriba.obj : src/variations/standalone/libscriba.c src/getopt.h src/report.h\
+             src/lexer.h src/sym.h src/expression.h src/syntax.h src/reader.h src/myalloc.h\
+             src/builder.h src/memory.h src/execute.h src/buildnum.h src/conftree.h\
+             src/filesys.h 
+	$(CC) $(CFLAGS) /c /Folibscriba.obj src/variations/standalone/libscriba.c
 
-libscriba_omg.obj : variations/standalone/libscriba.c getopt.h report.h\
-             lexer.h sym.h expression.h syntax.h reader.h myalloc.h\
-             builder.h memory.h execute.h buildnum.h conftree.h\
-             filesys.h 
-	$(BCC) $(BCFLAGS) -c -olibscriba_omg.obj variations/standalone/libscriba.c
+libscriba_omg.obj : src/variations/standalone/libscriba.c src/getopt.h src/report.h\
+             src/lexer.h src/sym.h src/expression.h src/syntax.h src/reader.h src/myalloc.h\
+             src/builder.h src/memory.h src/execute.h src/buildnum.h src/conftree.h\
+             src/filesys.h 
+	$(BCC) $(BCFLAGS) -c -olibscriba_omg.obj src/variations/standalone/libscriba.c
 #
 # Create the configuration file
 #
@@ -241,67 +241,67 @@ scriba.conf : scriba.conf.lsp scriba.exe
 # Main OBJs
 #
 {#define CompileMain/X/Y=\
-X.obj : X.c Y
-	$(CC) $(CFLAGS) /c /FoX.obj X.c
+X.obj : src/X.c Y
+	$(CC) $(CFLAGS) /c /FoX.obj src/X.c
 
-X_omg.obj : X.c Y
-	$(BCC) $(BCFLAGS) -c -oX_omg.obj X.c
+X_omg.obj : src/X.c Y
+	$(BCC) $(BCFLAGS) -c -oX_omg.obj src/X.c
 }\
 {CompileMain confpile}
 {CompileMain ipreproc}
 {CompileMain lsp}
 {CompileMain scriba}
-{CompileMain builder filesys.h report.h lexer.h sym.h expression.h myalloc.h builder.h errcodes.h buildnum.h}
+{CompileMain builder src/filesys.h src/report.h src/lexer.h src/sym.h src/expression.h src/myalloc.h src/builder.h src/errcodes.h src/buildnum.h}
 {CompileMain lmt_none}
 {CompileMain lmt_httpd}
-{CompileMain conftree conftree.h errcodes.h filesys.h}
+{CompileMain conftree src/conftree.h src/errcodes.h src/filesys.h}
 {CompileMain dynlolib}
-{CompileMain execute sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h}
-{CompileMain expression errcodes.h report.h lexer.h sym.h expression.h myalloc.h}
-{CompileMain filesys errcodes.h}
+{CompileMain execute src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h}
+{CompileMain expression src/errcodes.h src/report.h src/lexer.h src/sym.h src/expression.h src/myalloc.h}
+{CompileMain filesys src/errcodes.h}
 {CompileMain httpd}
 {CompileMain getopt}
-{CompileMain lexer errcodes.h report.h lexer.h}
-{CompileMain match errcodes.h}
+{CompileMain lexer src/errcodes.h src/report.h src/lexer.h}
+{CompileMain match src/errcodes.h}
 {CompileMain logger}
 {CompileMain mygmtime}
 {CompileMain thread}
 {CompileMain hndlptr}
-{CompileMain memory errcodes.h myalloc.h}
-{CompileMain modumana basext.h sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h dynlolib.h modumana.h}
-{CompileMain hookers basext.h sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h dynlolib.h hookers.h}
+{CompileMain memory src/errcodes.h src/myalloc.h}
+{CompileMain modumana src/basext.h src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h src/dynlolib.h src/modumana.h}
+{CompileMain hookers src/basext.h src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h src/dynlolib.h src/hookers.h}
 {CompileMain myalloc}
-{CompileMain epreproc myalloc.h}
-{CompileMain options sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h}
-{CompileMain reader filesys.h report.h errcodes.h conftree.h reader.h}
-{CompileMain report errcodes.h}
+{CompileMain epreproc src/myalloc.h}
+{CompileMain options src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h}
+{CompileMain reader src/filesys.h src/report.h src/errcodes.h src/conftree.h src/reader.h}
+{CompileMain report src/errcodes.h}
 {CompileMain sym}
 {CompileMain basext}
 {CompileMain uniqfnam}
 {CompileMain errcodes}
-{CompileMain syntax report.h lexer.h sym.h expression.h syntax.h}
+{CompileMain syntax src/report.h src/lexer.h src/sym.h src/expression.h src/syntax.h}
 
-md5.obj : tools/md5.c tools/md5.h tools/global.h
-	$(CC) $(CFLAGS) /c /Fomd5.obj tools/md5.c
+md5.obj : build/md5.c build/md5.h build/global.h
+	$(CC) $(CFLAGS) /c /Fomd5.obj build/md5.c
 
-md5_omg.obj : tools/md5.c tools/md5.h tools/global.h
-	$(BCC) $(BCFLAGS) -c -omd5_omg.obj tools/md5.c
+md5_omg.obj : build/md5.c build/md5.h build/global.h
+	$(BCC) $(BCFLAGS) -c -omd5_omg.obj build/md5.c
 
-syntax.c : syntax.def bin\tools\syntaxer.exe
+src/syntax.c : syntax.def bin\tools\syntaxer.exe
 	bin\tools\syntaxer.exe
 
-command.h : command.c bin\tools\headerer.exe
-	bin\tools\headerer.exe command.c
+src/command.h : src/command.c bin\tools\headerer.exe
+	bin\tools\headerer.exe src/command.c
 
 #
 # Command OBJs
 #
 {#define CompileCommand/X=\
-X.obj : commands/X.c $(CHEADERS)
-	$(CC) $(CFLAGS) /c /FoX.obj commands/X.c
+X.obj : src/commands/X.c $(CHEADERS)
+	$(CC) $(CFLAGS) /c /FoX.obj src/commands/X.c
 
-X_omg.obj : commands/X.c $(CHEADERS)
-	$(BCC) $(BCFLAGS) -c -oX_omg.obj commands/X.c
+X_omg.obj : src/commands/X.c $(CHEADERS)
+	$(BCC) $(BCFLAGS) -c -oX_omg.obj src/commands/X.c
 }
 {CompileCommand extops}
 {CompileCommand environ}
@@ -365,7 +365,7 @@ dbg_con.obj : preproc/dbg/dbg_con.c preproc/dbg/dbg.h preproc/dbg/dbg_comm.h
 #
 # Generated C files
 #
-errcodes.c : errors.def bin\tools\generrh.exe
+src/errcodes.c : errors.def bin\tools\generrh.exe
 	bin\tools\generrh.exe
 
 

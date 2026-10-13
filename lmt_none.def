@@ -1,7 +1,7 @@
 #
 # This is a definition file that lists no external module.
 #
-# This file is used by tools/codegen/lmt_make.c to create the file
+# This file is used by build/codegen/lmt_make.c to create the file
 # lmt_none.c that lists no modules to statically link
 # into ScriptBasic.
 #

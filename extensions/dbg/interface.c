@@ -30,11 +30,11 @@ MCLIBS:
 #include <string.h>
 #include <ctype.h>
 
-#include "../../conftree.h"
-#include "../../report.h"
-#include "../../reader.h"
-#include "../../basext.h"
-#include "../../prepext.h"
+#include "../../src/conftree.h"
+#include "../../src/report.h"
+#include "../../src/reader.h"
+#include "../../src/basext.h"
+#include "../../src/prepext.h"
 
 #include "dbg.h"
 #include "dbg_comm.h"

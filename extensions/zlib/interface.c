@@ -8,7 +8,7 @@ UXLIBS: -lc -lz
 DWLIBS: -lc -lz
 */
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #include "zlib.h"
 

@@ -18,7 +18,7 @@
 [[[#esd::command E s/=section.*$//]]]
 [[[@define SourceFile/FILE_NAME=
 @section FILE_NAME
-[[[#esd::include ../FILE_NAME /*POD CUT*/]]] ]]]
+[[[#esd::include ../src/FILE_NAME /*POD CUT*/]]] ]]]
 \input texinfo @c -*-texinfo-*-
 @c %**start of header
 @setfilename source
@@ -43,6 +43,8 @@
 @end menu
 
 @chapter Introduction
+
+The sources it documents are in the @file{src} directory of the distribution.
 
 This file contains the source code documentation. Most of this information is also compiled into
 the developers guide or into other documentation.

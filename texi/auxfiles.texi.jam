@@ -63,11 +63,29 @@ The actual location of the source code root should not affect the building of th
 The directory structure of the source under this directory is the following:
 
 @example
---- ScriptBasic core C source files,
-    def files, command files,
-    shell scripts, Perl scripts
+--- the source root: the build description (makefile.jam and the jamal macro
+    files), the definition files (*.def), the shell scripts, the documentation
+    sources and the Perl programs kept for reference
 
-commands   --- all C source files that implement ScriptBasic commands
+build      --- the build drivers: the Windows command (.cmd) files and, in the
+               build/codegen directory, the C code generators and the helpers
+               they need
+src        --- the C sources of the interpreter and the headers generated next
+               to them
+src/commands   --- all C source files that implement ScriptBasic commands
+src/variations --- different variations of ScriptBasic
+src/variations/apacmodu   --- Apache module version of ScriptBasic. This variation was never developed and
+                             this thread of the development is stopped. Instead the httpd variation should
+                             be used together with the Apache web server.
+src/variations/httpd      --- Standalone web server variation.
+src/variations/standalone --- Standalone version that allows BASIC compile to C and link together with the
+                             runtime environment.
+src/variations/standard   --- The standard command line variation.
+src/variations/win32dll   --- Win32dll version that allows embedding of the program into WIN32 applications.
+                             This thread of the development was stopped and is not supported anymore. There
+                             are plans to support similar variations.
+src/variations/winisapi   --- Variation that executes web programs as ISAPI application. This version is not
+                             supported any more. Laster it may revitalized.
 deb        --- Debian package files
 deb/scriba     --- temporary directory that is filled by the script mkdeb.sh when
                    creating a Debian package
@@ -99,20 +117,6 @@ html/texi              --- texi.jam documentation source files. Should be proces
 include    --- BASIC include files for the modules
 preproc    --- a sample preprocessor. Note that preprocessor is experimental and will change in future.
 test       --- test programs
-tools      --- tool programs
-variations --- different variations of ScriptBasic
-variations/apacmodu   --- Apache module version of ScriptBasic. This variation was never developed and
-                          this thread of the development is stopped. Instead the httpd variation should
-                          be used together with the Apache web server.
-variations/httpd      --- Standalone web server variation.
-variations/standalone --- Standalone version that allows BASIC compile to C and link together with the
-                          runtime environment.
-variations/standard   --- The standard command line variation.
-variations/win32dll   --- Win32dll version that allows embedding of the program into WIN32 applications.
-                          This thread of the development was stopped and is not supported anymore. There
-                          are plans to support similar variations.
-variations/winisapi   --- Variation that executes web programs as ISAPI application. This version is not
-                          supported any more. Laster it may revitalized.
 @end example
 
 @chapter BASIC programs
@@ -154,6 +158,8 @@ the bbf file is binary.
 @chapter Batch (.CMD) files
 
 These command files can be used to maintain the source files under Windows NT.
+They all live in the @file{build} directory of the source tree and start by moving
+there, so they can be started from anywhere.
 
 @section mkcdoc.cmd
 
@@ -161,44 +167,45 @@ Create the command reference
 
 This batch file creates the @file{command.html} file that contains the user reference
 documentation of the BASIC commands. The source of the documentation is maintained
-on the C source files that are in the directory @file{commands}. This way the reference
+on the C source files that are in the directory @file{src/commands}. This way the reference
 documentation of a BASIC command is maintained together with the actual C code
 implementing the command.
 
-[[[SourceCode mkcdoc.cmd]]]
+[[[SourceCode build/mkcdoc.cmd]]]
 
 @section install.cmd
 
 This command file copies all the generated and documentation files into the root
 directory @file{\ScriptBasic} that belong to the final installation set under Win32.
 
-[[[SourceCode install.cmd]]]
+[[[SourceCode build/install.cmd]]]
 
 @section makerrs.cmd
 
 This command file creates the files @file{errcodes.c} and @file{errcodes.h} file from the file
 T<errors.def>. The file T<errors.def> contains the error messages in an easy to maintain and
 easy to read format. This batch file runs the C code generator @file{generrh}
-(see @file{tools/codegen/generrh.c}) to create the C source files for the error codes.
+(see @file{build/codegen/generrh.c}) to create the C source files for the error codes.
+The files it writes are @file{src/errcodes.c} and @file{src/errcodes.h}.
 
-[[[SourceCode makerrs.cmd]]]
+[[[SourceCode build/makerrs.cmd]]]
 
 @section mkweb.cmd
 
-This command file compiles the ScriptBasic web content. It has to be executed from the source root directory. Both steps are the C tools now: @file{tools/codegen/ssplit.c} splits @file{html/source.txt} into the @code{.jam} files it names, and @file{tools/codegen/jamal.c} processes each of them with @file{macros.jim}, which the split writes as well.
+This command file compiles the ScriptBasic web content. It has to be executed from the source root directory. Both steps are the C tools now: @file{build/codegen/ssplit.c} splits @file{html/source.txt} into the @code{.jam} files it names, and @file{build/codegen/jamal.c} processes each of them with @file{macros.jim}, which the split writes as well.
 
-[[[SourceCode mkweb.cmd]]]
+[[[SourceCode build/mkweb.cmd]]]
 
 @section mksyntax.cmd
 
-This command file runs the C code generator @file{syntaxer} to create the @file{syntax.c} file
+This command file runs the C code generator @file{syntaxer} to create the @file{src/syntax.c} file
 from the file @file{syntax.def}
 
 The syntax definition of the BASIC language is defined in an easy to maintain text
-file named @file{syntax.def} and the program @file{tools/codegen/syntaxer.c} creates the human-unreadable
+file named @file{syntax.def} and the program @file{build/codegen/syntaxer.c} creates the human-unreadable
 C source file from it that contains all the tables that drive the syntax analyzer.
 
-[[[SourceCode mksyntax.cmd]]]
+[[[SourceCode build/mksyntax.cmd]]]
 
 @section pack.cmd
 
@@ -209,7 +216,7 @@ ZIP files.
 Before releasing a new release this batch file has to be edited to alter the
 @code{%BUILD%} variable for the actual build.
 
-[[[SourceCode pack.cmd	]]]
+[[[SourceCode build/pack.cmd	]]]
 @section mksamples.cms
 
 This command file converts a @code{.texi.jam} file with @file{bin/tools/jamal} to a @code{.texi} file and then converts that with @file{bin/tools/t2h} to html pages, next to the texi in @file{bin/texi}. It is a call of @xref{mkth.cmd} with the name of the document; the version that also started TeX and the Microsoft hhc help compiler is gone with the harness that had them.
@@ -228,7 +235,8 @@ This command is similar to @xref{mkth.com} except that this file also cares the 
 
 @section mkth.cmd
 
-This command file converts a @code{.texi.jam} file of the @file{texi} directory with @file{bin/tools/jamal} to a @code{.texi} file in @file{bin/texi} and then converts that with @file{bin/tools/t2h} to the html pages, which land next to the texi file. It needs neither Perl nor TeX: the tools are the C programs of @file{tools/codegen}. The name @code{all} builds every document of the tree.
+This command file converts a @code{.texi.jam} file of the @file{texi} directory with @file{bin/tools/jamal} to a @code{.texi} file in @file{bin/texi} and then converts that with @file{bin/tools/t2h} to the html pages, which land next to the texi file. It needs neither Perl nor TeX: the tools are the C programs of @file{build/codegen}.
+The command file moves to the source root itself, so it can be started from anywhere. The name @code{all} builds every document of the tree.
 
 The script has to be executed from the source directory and should get a single argument that is the name of the documentation file without any extension. For example
 
@@ -240,7 +248,7 @@ will convert the file @file{auxfiles.texi.jam} (the source file for this text) t
 
 The command file @xref{mkath.cmd} calls this command file for each @code{.texi.jam} file.
 
-[[[SourceCode mkth.cmd]]]
+[[[SourceCode build/mkth.cmd]]]
 
 @section mkthl.cmd
 
@@ -253,7 +261,7 @@ This command file is to be used instead of @xref{mkth.cmd} when editing the docu
 This is a simple command script that calls @xref{mkth.cmd} for every document of the tree and
 then converts the module pages that @file{make} has left in @file{bin/texi}.
 
-[[[SourceCode mkath.cmd]]]
+[[[SourceCode build/mkath.cmd]]]
 
 @chapter C source files
 
@@ -279,14 +287,14 @@ This chapter lists the definition files. These files are used to have a maintain
 
 @section errors.def
 
-This file contains the error constant definitions. This file is converted to C source file using the program @file{tools/codegen/generrh.c}
+This file contains the error constant definitions. This file is converted to C source file using the program @file{build/codegen/generrh.c}
 
 [[[NoSourceCode]]]
 
 @section syntax.def
 
 This file contains the syntax definition of the language ScriptBasic. This syntax definition is converted to C source file containing syntax definition tables using the program
-@file{tools/codegen/syntaxer.c}.
+@file{build/codegen/syntaxer.c}.
 
 [[[SourceCode syntax.def]]]
 
@@ -311,7 +319,7 @@ The Perl program used to automate the code maintenance are listed in this chapte
 
 @section ssplit.pl
 
-This file splits the file @file{html/source.txt} into several Jamal files. The C port @file{tools/codegen/ssplit.c} is what the command files run; this is the Perl original, kept for reference.
+This file splits the file @file{html/source.txt} into several Jamal files. The C port @file{build/codegen/ssplit.c} is what the command files run; this is the Perl original, kept for reference.
 
 [[[SourceCode ssplit.pl]]]
 
@@ -337,11 +345,11 @@ This tool is not going to be used anymore for the documentation of ScriptBasic. 
 
 @section generrh.pl (archived)
 
-This script read the files @file{errors.def}, @file{build.txt} and created the files @file{errcodes.c} and @file{include/error.bas}.
+This script read the files @file{errors.def}, @file{build.txt} and created the files @file{errcodes.c} and @file{include/error.bas}. The C port writes them into @file{src} and @file{include}.
 
 The file @file{errors.def} contains the used error symbols in an easy to maintain text format.
 
-This script has been replaced by the C program @file{tools/codegen/generrh.c}, which produces byte-identical output, and has been moved to the @file{OLD/} directory.
+This script has been replaced by the C program @file{build/codegen/generrh.c}, which produces byte-identical output, and has been moved to the @file{OLD/} directory.
 
 [[[NoSourceCode]]]
 
@@ -351,7 +359,7 @@ This script read the C source files one-by-one that are given on the command lin
 
 Note that in case the C file was not changed and thus the new header file is the same as the old one the program does not touch the header file and this way it does not force and @code{make} utility to recompile the source useless.
 
-This script has been replaced by the C program @file{tools/codegen/headerer.c} and has been moved to the @file{OLD/} directory. The ScriptBasic re-implementation @file{headerer.bas} is superseded by the same tool and has been moved to the @file{OLD/} directory as well.
+This script has been replaced by the C program @file{build/codegen/headerer.c} and has been moved to the @file{OLD/} directory. The ScriptBasic re-implementation @file{headerer.bas} is superseded by the same tool and has been moved to the @file{OLD/} directory as well.
 
 [[[NoSourceCode]]]
 
@@ -364,16 +372,16 @@ Html Embedded Basic sample preprocessor.
 @section mkcdoc.pl
 
 Extract the BASIC command reference documentation from the C source files that are in the
-C source file in the directory @file{commands}
+C source file in the directory @file{src/commands}
 
 [[[SourceCode mkcdoc.pl]]]
 
 @section syntaxer.pl (archived)
 
-Read the file @file{syntax.def} and create the file @file{syntax.c} converting the syntax definition
+Read the file @file{syntax.def} and create the file @file{src/syntax.c} converting the syntax definition
 from an easy to read and maintain format to C source file.
 
-This script has been replaced by the C program @file{tools/codegen/syntaxer.c} and has been moved to the @file{OLD/} directory. Unlike the Perl script, the C program emits the syntax tables in a deterministic order.
+This script has been replaced by the C program @file{build/codegen/syntaxer.c} and has been moved to the @file{OLD/} directory. Unlike the Perl script, the C program emits the syntax tables in a deterministic order.
 
 [[[NoSourceCode]]]
 
@@ -386,10 +394,10 @@ build version.
 
 @section lmt_make.pl (archived)
 
-This script read a file named @file{lmt_XXX.def} and created the file @file{lmt_XXX.c}
+This script read a file named @file{lmt_XXX.def} and created the file @file{src/lmt_XXX.c}
 to help the linking of the external modules into ScriptBasic static.
 
-This script has been replaced by the C program @file{tools/codegen/lmt_make.c} and has been moved to the @file{OLD/} directory.
+This script has been replaced by the C program @file{build/codegen/lmt_make.c} and has been moved to the @file{OLD/} directory.
 
 [[[NoSourceCode]]]
 

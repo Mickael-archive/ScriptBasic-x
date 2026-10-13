@@ -19,8 +19,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 TO_HEADER:
 
-#include "../basext.h"
-#include "../thread.h"
+#include "../src/basext.h"
+#include "../src/thread.h"
 
 typedef struct _rpm_resource_t {
   void *handle; // handle to the resouce

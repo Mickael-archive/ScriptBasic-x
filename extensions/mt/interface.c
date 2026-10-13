@@ -30,7 +30,7 @@ DWLIBS: -init __init
 */
 #include <stdio.h>
 #include <time.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 /**
 =H The module MT

@@ -25,7 +25,7 @@ UXLIBS: -lpq
 
 /* vvv Debian GNU/Linux: /usr/include/postgresql/libpq-fe.h */
 #include <postgresql/libpq-fe.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 #include <stdio.h> /* simple debugging */
 #include <string.h> /* memcmp() */
 #include <stdlib.h> /* free() */

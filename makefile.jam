@@ -79,16 +79,16 @@ all: {MainExe scriba} {MainExe sbhttpd} {MainLib libscriba}
  Generated C files
 
 ----------------------------------------------------------------------}
-errcodes.c : errors.def
+src/errcodes.c : errors.def
 	bin/tools/generrh
 
-syntax.c : syntax.def
+src/syntax.c : syntax.def
 	bin/tools/syntaxer
 
-lmt_none.c : lmt_none.def
+src/lmt_none.c : lmt_none.def
 	bin/tools/lmt_make $?
 
-lmt_httpd.c : lmt_httpd.def
+src/lmt_httpd.c : lmt_httpd.def
 	bin/tools/lmt_make $?
 
 {@comment ------------------------------------------------------------
@@ -97,42 +97,42 @@ lmt_httpd.c : lmt_httpd.def
 
 ----------------------------------------------------------------------}
 {#define CompileMain/X/Y=\
-{MainObj X} : X.c Y
-	{cc} {CcOptCompile} {CcOptOutput {MainObj X}} X.c
+{MainObj X} : src/X.c Y
+	{cc} {CcOptCompile} {CcOptOutput {MainObj X}} src/X.c
 }
 {CompileMain confpile}
 {CompileMain ipreproc}
 {CompileMain lsp}
 {CompileMain scriba}
 {CompileMain buildnum}
-{CompileMain builder filesys.h report.h lexer.h sym.h expression.h myalloc.h builder.h errcodes.h buildnum.h}
-{CompileMain conftree conftree.h errcodes.h filesys.h}
+{CompileMain builder src/filesys.h src/report.h src/lexer.h src/sym.h src/expression.h src/myalloc.h src/builder.h src/errcodes.h src/buildnum.h}
+{CompileMain conftree src/conftree.h src/errcodes.h src/filesys.h}
 {CompileMain dynlolib}
-{CompileMain execute sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h}
-{CompileMain expression errcodes.h report.h lexer.h sym.h expression.h myalloc.h}
-{CompileMain filesys errcodes.h}
+{CompileMain execute src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h}
+{CompileMain expression src/errcodes.h src/report.h src/lexer.h src/sym.h src/expression.h src/myalloc.h}
+{CompileMain filesys src/errcodes.h}
 {CompileMain httpd}
 {CompileMain getopt}
-{CompileMain lexer errcodes.h report.h lexer.h}
-{CompileMain match errcodes.h}
+{CompileMain lexer src/errcodes.h src/report.h src/lexer.h}
+{CompileMain match src/errcodes.h}
 {CompileMain logger}
 {CompileMain mygmtime}
 {CompileMain thread}
 {CompileMain hndlptr}
-{CompileMain memory errcodes.h myalloc.h}
-{CompileMain modumana basext.h sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h dynlolib.h modumana.h}
-{CompileMain hookers basext.h sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h dynlolib.h hookers.h}
+{CompileMain memory src/errcodes.h src/myalloc.h}
+{CompileMain modumana src/basext.h src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h src/dynlolib.h src/modumana.h}
+{CompileMain hookers src/basext.h src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h src/dynlolib.h src/hookers.h}
 {CompileMain myalloc}
-{CompileMain epreproc myalloc.h}
-{CompileMain options sym.h errcodes.h report.h lexer.h expression.h builder.h memory.h syntax.h execute.h myalloc.h}
-{CompileMain stndlone getopt.h scriba.h basext.h}
-{CompileMain reader filesys.h report.h errcodes.h conftree.h reader.h}
-{CompileMain report errcodes.h}
+{CompileMain epreproc src/myalloc.h}
+{CompileMain options src/sym.h src/errcodes.h src/report.h src/lexer.h src/expression.h src/builder.h src/memory.h src/syntax.h src/execute.h src/myalloc.h}
+{CompileMain stndlone src/getopt.h src/scriba.h src/basext.h}
+{CompileMain reader src/filesys.h src/report.h src/errcodes.h src/conftree.h src/reader.h}
+{CompileMain report src/errcodes.h}
 {CompileMain sym}
 {CompileMain basext}
 {CompileMain uniqfnam}
 {CompileMain errcodes}
-{CompileMain syntax report.h lexer.h sym.h expression.h syntax.h}
+{CompileMain syntax src/report.h src/lexer.h src/sym.h src/expression.h src/syntax.h}
 {CompileMain md5}
 
 {@comment ------------------------------------------------------------
@@ -141,8 +141,8 @@ lmt_httpd.c : lmt_httpd.def
 
 ----------------------------------------------------------------------}
 {#define CompileCommand/X=\
-{MainObj X} : commands/X.c
-	{cc} {CcOptCompile} {CcOptOutput {MainObj X}} commands/X.c
+{MainObj X} : src/commands/X.c
+	{cc} {CcOptCompile} {CcOptOutput {MainObj X}} src/commands/X.c
 }
 {CompileCommand extops}
 {CompileCommand environ}
@@ -177,8 +177,8 @@ lmt_httpd.c : lmt_httpd.def
 	{mkdir {vardir}{VARIATION}}
 	{cc} {CcOptCompile} {CcOptOutput {VarObj scribacmd}} {VarC scribacmd}
 
-{MainObj lmt_none} : lmt_none.c
-	{cc} {CcOptCompile} {CcOptOutput {MainObj lmt_none}} lmt_none.c
+{MainObj lmt_none} : src/lmt_none.c
+	{cc} {CcOptCompile} {CcOptOutput {MainObj lmt_none}} src/lmt_none.c
 
 
 {#define VARIATION=httpd}
@@ -190,8 +190,8 @@ lmt_httpd.c : lmt_httpd.def
 
 {CompileVariationC service}
 
-{MainObj lmt_httpd} : lmt_httpd.c
-	{cc} {CcOptCompile} {CcOptOutput {MainObj lmt_httpd}} lmt_httpd.c
+{MainObj lmt_httpd} : src/lmt_httpd.c
+	{cc} {CcOptCompile} {CcOptOutput {MainObj lmt_httpd}} src/lmt_httpd.c
 
 {@comment ------------------------------------------------------------
 

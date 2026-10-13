@@ -13,7 +13,7 @@ UXLIBS: -lodbc
 #include <stdio.h>
 
 #define BYTE_TYPE_ALREADY_DEFINED 1
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 
 /* The opened connections are stored in linked list */

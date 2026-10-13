@@ -1,8 +1,8 @@
 #
 # This file contains the error constants that are used in the ScriptBasic interpreter.
-# The program tools/codegen/generrh.c creates the files:
+# The program build/codegen/generrh.c creates the files:
 #
-#     o errcodes.c   (errcodes.h is created from this file via tools/codegen/headerer.c)
+#     o errcodes.c   (errcodes.h is created from this file via build/codegen/headerer.c)
 #     o error.bas    (in the directory "include")
 #
 # %RT means run-time errors. Only these are put into the BASIC include file.

@@ -18,5 +18,5 @@
 [[[#esd::command s/=section.*$//]]]
 
 
-[[[#esd::include scriba.c /*POD CUT*/]]]
+[[[#esd::include src/scriba.c /*POD CUT*/]]]
 

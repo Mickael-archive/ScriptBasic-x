@@ -168,7 +168,7 @@ sub find_esd {
   }
 
 #
-# The Jamal preprocessor is a C program now (tools/codegen/jamal.c).  The Perl
+# The Jamal preprocessor is a C program now (build/codegen/jamal.c).  The Perl
 # original is kept for the documentation files that use the esd extension
 # module, which a C program cannot load, and it is used as a fallback when the
 # C tool has not been built.  The choice is made here, before the branches
@@ -403,9 +403,9 @@ if( ! $OPT{'--no-mkdir'} ){# default is to create the subdirs
   }
 
 if( ! $OPT{'--no-tools'} ){# the code generators are C programs now: build them first
-  print "building the C code generator tools in tools/codegen\n";
-  &logit("make -C tools/codegen");
-  system("make -C tools/codegen") == 0 or die "Can not build the C code generator tools in tools/codegen\n";
+  print "building the C code generator tools in build/codegen\n";
+  &logit("make -C build/codegen");
+  system("make -C build/codegen") == 0 or die "Can not build the C code generator tools in build/codegen\n";
   }
 &pick_jamal;
 if( $jamal =~ /^perl / ){

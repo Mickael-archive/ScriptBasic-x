@@ -20,7 +20,7 @@ UXLIBS: -lmysqlclient
 #define VERSION323 1
 #endif
 
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 typedef struct _mymysqlHANDLE {
   MYSQL *hSQL;

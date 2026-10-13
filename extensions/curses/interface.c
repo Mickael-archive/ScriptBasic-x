@@ -110,7 +110,7 @@ is still buggy.
 
 */
 
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #define MAX_WINDOWS 16
 WINDOW *window_list[MAX_WINDOWS];

@@ -14,7 +14,7 @@ The directories that need explaining have a README of their own:
   where each name went.  The release tarballs themselves are not committed; its
   README records their URLs and checksums.
 
-## Perl code generators (replaced by the C tools in `tools/codegen/`)
+## Perl code generators (replaced by the C tools in `build/codegen/`)
 
 The following Perl scripts used to generate C sources at build time. They have
 been ported to portable C23 programs that produce byte-identical output and are
@@ -23,10 +23,10 @@ now built and invoked by the `setup` script / `setup.pl` / `makefile.jam` /
 
 | Archived Perl script | C replacement               | Generates                              |
 |----------------------|-----------------------------|----------------------------------------|
-| `generrh.pl`         | `tools/codegen/generrh.c`   | `errcodes.c`, `include/error.bas`      |
-| `headerer.pl`         | `tools/codegen/headerer.c`  | the `*.h` headers from the `*.c` files |
-| `syntaxer.pl`        | `tools/codegen/syntaxer.c`  | `syntax.c`, `notimp.c`                 |
-| `lmt_make.pl`        | `tools/codegen/lmt_make.c`  | `lmt_*.c` from `lmt_*.def`             |
+| `generrh.pl`         | `build/codegen/generrh.c`   | `errcodes.c`, `include/error.bas`      |
+| `headerer.pl`         | `build/codegen/headerer.c`  | the `*.h` headers from the `*.c` files |
+| `syntaxer.pl`        | `build/codegen/syntaxer.c`  | `syntax.c`, `notimp.c`                 |
+| `lmt_make.pl`        | `build/codegen/lmt_make.c`  | `lmt_*.c` from `lmt_*.def`             |
 
 The Jamal macro processor is not a code generator and is therefore not
 archived: it has been ported as well and is described in the next section.
@@ -41,7 +41,7 @@ well.
 
 ## The Jamal preprocessor
 
-`tools/codegen/jamal.c` is a full port of the macro processor. `setup` builds it
+`build/codegen/jamal.c` is a full port of the macro processor. `setup` builds it
 with the other tools and runs it to generate `bin/make/Makefile` and the
 `extensions/*/makefile` files, so the **compilation flow needs no Perl at all**.
 Every file in the tree that contains Jamal macros (104 of them: `makefile.jam`,
@@ -73,8 +73,8 @@ return in a way that can never match. The port does the same.
 The texi sources pull the documented source files in through the `esd` Jamal
 extension module (`esd.pm`): `{#esd::command n s{...}{...}}` registers a
 substitution that is then applied to every line of what `{#esd::include file}`
-reads. `tools/codegen/jamal.c` implements that module, so `{#use esd}` works
-without a Perl interpreter, and `tools/codegen/t2h.c` is a port of `t2h.pl`, the
+reads. `build/codegen/jamal.c` implements that module, so `{#use esd}` works
+without a Perl interpreter, and `build/codegen/t2h.c` is a port of `t2h.pl`, the
 texi to html converter that turns `bin/texi/mod_*.texi` into the html pages. The
 module makefiles run both of them, so `./setup --unix` now builds the code and
 the documentation without invoking Perl.
@@ -106,7 +106,7 @@ history, so those pages came out empty; `perl jamal.pl` printed the same "cannot
 be opened" message and wrote the same empty file. The one skeleton the tree has is
 `texi/skeleton.jim`: it is what `texi/mod_*.texi.jam` include, and what `setup.pl`
 copies into a module it creates. The 16 includes, and the two places that generate
-them (`setup.pl` and the `%SKELETONS` table of `tools/codegen/setup_data.h`), now
+them (`setup.pl` and the `%SKELETONS` table of `build/codegen/setup_data.h`), now
 name `../../texi/skeleton.jim`.
 
 That alone would not have been enough. `esd::include` reads the module source,
@@ -306,12 +306,12 @@ file in place, `eszterengine` is the third document of the chain -- after
 
 ## The setup program
 
-`tools/codegen/setup.c` is the C port of `setup.pl`. The UNIX entry point is the
+`build/codegen/setup.c` is the C port of `setup.pl`. The UNIX entry point is the
 shell script `setup` in the top directory:
 
     ./setup
 
-which builds the tools in `tools/codegen` and then runs `bin/tools/setup`
+which builds the tools in `build/codegen` and then runs `bin/tools/setup`
 (`make` and `make install` call the same script). The Perl driver `setup.pl` is
 still in the tree and still works (`perl setup.pl --unix`), but it is no longer
 needed: it drives the same C tools. The port was checked against the Perl
@@ -343,9 +343,9 @@ order of the interactive `--install` questions.
 
 The data the original carries inline - the `%HELP` texts, the `%SKELETONS`
 module files, the installation defaults and every shell and configuration
-template - lives in `tools/codegen/setup_data.h` and
-`tools/codegen/setup_text.h`. Both are checked in, so the build needs no Python;
-`tools/codegen/extract_setup_data.py` regenerates them from `setup.pl`, and has
+template - lives in `build/codegen/setup_data.h` and
+`build/codegen/setup_text.h`. Both are checked in, so the build needs no Python;
+`build/codegen/extract_setup_data.py` regenerates them from `setup.pl`, and has
 to be run again only when the texts change there. It had one trap: it emits the
 `SETUP_HD` entries in the order they appear in `setup.pl`, while `setup.c` names
 them by index, and the table that was checked in followed the order `setup.c`
@@ -409,7 +409,7 @@ partial refactorings and one-off experiments. They are kept only for reference.
 `html/` holds the source of the project web site (Jamal + ssplit), but the live
 rebuild flows (`mkweb.cmd`, `mksamples.cmd`, `mkth*.cmd`) used to run the
 **top-level** `jamal.pl`, `ssplit.pl` and `mkweb.pl`; they run the C tools of
-`tools/codegen` now (see *The Windows command files and `ssplit`*). The copies
+`build/codegen` now (see *The Windows command files and `ssplit`*). The copies
 that used to sit
 *inside* `html/`, `html/examples/` and `html/embdguid/` were frozen snapshots of
 that tooling together with their own tiny driver scripts; nothing referenced them
@@ -541,8 +541,8 @@ the generated scripts first.
 Two more Perl programs of the documentation chain are C now, and both of them
 were wired into a build that ran Perl before.
 
-**`mkcdoc.pl` → `tools/codegen/mkcdoc.c`.** The documentation of every command
-of the language is in the C sources of the `commands/` directory, in comments
+**`mkcdoc.pl` → `build/codegen/mkcdoc.c`.** The documentation of every command
+of the language is in the C sources of the `src/commands/` directory, in comments
 that open with the name of the command and carry the directives `=section`,
 `=title`, `=subtitle` and `=display`; the rest of the comment is the
 documentation of the command, and `=details`, `=verbatim` and `=itemize` inside
@@ -559,7 +559,7 @@ chapter is 289 `@section` entries, `bin/texi/ug.texi` is 396 857 bytes with it
 against the 258 623 of the guide without a command reference, and the
 `mkcdoc.cmd` of the Windows side runs the C program too.
 
-*Checked:* run in a copy of `commands/`, the port writes the same thing as the
+*Checked:* run in a copy of `src/commands/`, the port writes the same thing as the
 Perl program.  `commands.texi` is the chapter of the Perl with the CR taken off
 (the Perl writes 139 434 bytes with 1 497 CR in them, the port 138 234 without a
 CR), and after that the two differ in 53 lines: three are the places where the
@@ -574,7 +574,7 @@ lines only, and the fifteen detail pages of the two are identical after the CR
 of the Perl is taken off their text; their *names* differ, because the Perl names
 them "ABS" with a CR before the .html and the port names them "ABS.html".
 
-**`mkscribadef.pl` → `tools/codegen/mkscribadef.c`.** `scriba.def`, the export
+**`mkscribadef.pl` → `build/codegen/mkscribadef.c`.** `scriba.def`, the export
 definition file of the library for the Windows link of the DLL, is the list of
 the functions of `scriba.c`: every comment that holds the word `FUNCTION` is
 followed by the declaration of a function, and the name of it is the second word
@@ -616,7 +616,7 @@ Around it, the command files that used to be separate drivers are calls of it:
 
 `mkweb.cmd` and `examples/sibawa/mktm.cmd` needed a tool of their own, the
 `ssplit.pl` source splitter, which cuts a text file into the files its `%file`
-lines name.  It is `tools/codegen/ssplit.c` now and is built with the other
+lines name.  It is `build/codegen/ssplit.c` now and is built with the other
 tools, so `mkweb.cmd` splits `html/source.txt` with `bin\tools\ssplit` -- the
 first file it names is the macro package `macros.jim` -- and then runs
 `bin\tools\jamal` on every `.jam` file with that package, which is the loop
@@ -634,7 +634,7 @@ tree nor in its history, and ran `esd2html.pl` on them.  The target is gone and
 
 | Check | Result |
 |-------|--------|
-| `perl ssplit.pl html/source.txt out` against `bin/tools/ssplit html/source.txt out` | the same 62 files, byte for byte the same once the CR the Perl leaves on UNIX is taken off.  The port takes the CR off with the LF on either system, the way the other ports of the tree do, see the note at the top of `tools/codegen/ssplit.c` |
+| `perl ssplit.pl html/source.txt out` against `bin/tools/ssplit html/source.txt out` | the same 62 files, byte for byte the same once the CR the Perl leaves on UNIX is taken off.  The port takes the CR off with the LF on either system, the way the other ports of the tree do, see the note at the top of `build/codegen/ssplit.c` |
 | a `%file`/`%dir` fixture, and the second argument as the output directory | the same tree, subdirectory and all |
 | a file that did not change between two runs | not rewritten, as in the Perl (the `return if $buffer eq $sbuffer` case) |
 | `-h`, and a file that cannot be opened | the same help text, the same error text, and the same exit status `2` |

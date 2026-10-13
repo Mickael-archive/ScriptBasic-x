@@ -21,7 +21,7 @@ MCLIBS:
 */
 #include <stdio.h>
 #define PRIME 211
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 typedef struct _hashe {
   VARIABLE Key,Value;

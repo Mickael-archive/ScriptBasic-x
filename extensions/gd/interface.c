@@ -6,7 +6,7 @@ NTLIBS: libpng.lib gd.lib zlibs.lib
 UXLIBS: -lc -lpng -lz -lgd
 */
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #include "gd.h"
 #include "gdfontt.h"

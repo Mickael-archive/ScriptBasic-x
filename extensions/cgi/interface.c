@@ -23,7 +23,7 @@ MCLIBS:
 #include <httpext.h>
 #endif
 
-#include "../../basext.h"
+#include "../../src/basext.h"
 #include "cgi.h"
 
 /*

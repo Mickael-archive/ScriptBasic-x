@@ -9,7 +9,7 @@ DWLIBS:
 
 */
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 besVERSION_NEGOTIATE
 

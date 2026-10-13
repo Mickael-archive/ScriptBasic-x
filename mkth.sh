@@ -3,7 +3,7 @@
 # Build the ScriptBasic documents: the *.texi.jam files of texi/, esd.texi.jam
 # and the module pages the module makefiles write.  It is the UNIX half of the
 # documentation driver (mkth.cmd is the Windows one, mkath.cmd calls it for
-# every document).  This version uses the C tools of tools/codegen: no Perl and
+# every document).  This version uses the C tools of build/codegen: no Perl and
 # no LaTeX.  Each document produces <name>.texi and the html pages of it in
 # bin/texi, next to the module pages.
 #
@@ -31,7 +31,7 @@
 # extension module writes the sample into a file and the document executes it
 # with scriba.  samples.pm did not survive (it is not in the tree, its history,
 # or the release archives), so this port implements its documented interface in
-# the C jamal (see tools/codegen/jamal.c); scriba is the one ./setup builds into
+# the C jamal (see build/codegen/jamal.c); scriba is the one ./setup builds into
 # bin/exe.  These two want the current directory to be the tmp/ subdirectory of
 # the document: they run `scriba FILE ... 2> error.txt', which writes error.txt
 # into the current directory, and then include `tmp/error.txt', which jamal
@@ -86,7 +86,7 @@ for name in "$@" ; do
     fi
 
   # The command reference chapter of the User Guide is commands.texi, made out
-  # of the documentation blocks of the commands/ sources by mkcdoc (the C port
+  # of the documentation blocks of the src/commands/ sources by mkcdoc (the C port
   # of mkcdoc.pl).  It is written into the top directory, where the
   # <%#include ../commands.texi%> of texi/ug.texi.jam looks for it.
   if [ "$name" = ug ] ; then
@@ -124,7 +124,7 @@ for name in "$@" ; do
       if [ ! -f "$top/commands.texi" ] ; then
         echo "###WARNING ug: commands.texi is missing, so the command reference"
         echo "###WARNING ug: chapter comes out empty.  It is generated from the"
-        echo "###WARNING ug: commands/ sources by bin/tools/mkcdoc."
+        echo "###WARNING ug: src/commands/ sources by bin/tools/mkcdoc."
         fi;;
     auxfiles)
       for f in install.sh mkdeb.sh ; do

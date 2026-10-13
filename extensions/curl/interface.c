@@ -24,7 +24,7 @@ UXLIBS: -lcurl -lssl -lcrypto -ldl -lc
 #include <stdio.h>
 #include <time.h>
 #include <curl/curl.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 /**
 The CURL module provides easy and still powerful functions to perform various network

@@ -11,7 +11,7 @@ DWLIBS:
 #include <stdio.h>
 #include <string.h>
 
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #include <sys/types.h>
 #include "regex.h"

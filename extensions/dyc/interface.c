@@ -164,7 +164,7 @@ T_RESULT WINAPI DynaCall(int Flags, DWORD lpFunction,
 }
 
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 
 /*

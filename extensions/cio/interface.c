@@ -31,7 +31,7 @@ NTLIBS:
 #include <winbase.h>
 #include <winuser.h>
 #endif
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 /**
 Console handling low level routines for Win32 environment.

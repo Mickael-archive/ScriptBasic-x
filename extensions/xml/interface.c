@@ -14,7 +14,7 @@ UXLIBS: -lxml2
 */
 
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #include <libxml/parser.h>
 

@@ -17,7 +17,7 @@ NTLIBS: advapi32.lib user32.lib kernel32.lib
 
 */
 #include <stdio.h>
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 #include <windows.h>
 #include <winbase.h>

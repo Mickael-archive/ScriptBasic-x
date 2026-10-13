@@ -24,7 +24,7 @@ UXLIBS: -lbdb
 
 #include <db.h>
 
-#include "../../basext.h"
+#include "../../src/basext.h"
 
 
 #define BDB_ERROR_INVALID_FILE_NAME      0x00080001
