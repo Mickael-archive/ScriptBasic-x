@@ -5,7 +5,7 @@ CC     ?= gcc
 CFLAGS ?= -std=c2x -O2 -Wall -Wextra
 BIN    := ../../bin/tools
 
-all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer $(BIN)/jamal $(BIN)/t2h $(BIN)/setup $(BIN)/mkcdoc $(BIN)/mkscribadef
+all: $(BIN)/generrh $(BIN)/lmt_make $(BIN)/headerer $(BIN)/syntaxer $(BIN)/jamal $(BIN)/t2h $(BIN)/setup $(BIN)/mkcdoc $(BIN)/mkscribadef $(BIN)/ssplit
 
 $(BIN)/lmt_make: lmt_make.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
@@ -35,4 +35,7 @@ $(BIN)/mkcdoc: mkcdoc.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<
 
 $(BIN)/mkscribadef: mkscribadef.c | $(BIN)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BIN)/ssplit: ssplit.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ $<

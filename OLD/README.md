@@ -277,9 +277,9 @@ with it there is no warning and the section has text:
 
 | File | Without `--install` | With `--install` |
 |------|---------------------|------------------|
-| `bin/texi/auxfiles.texi` | 41 122 bytes, 4 warning lines | 48 724 bytes, none |
+| `bin/texi/auxfiles.texi` | 42 748 bytes, 4 warning lines | 50 350 bytes, none |
 | `bin/texi/eszterengine.texi` | 29 849 bytes, 2 warning lines | 30 225 bytes, none |
-| `bin/texi/auxfiles.html` | 50 352 bytes | 58 015 bytes |
+| `bin/texi/auxfiles.html` | 52 195 bytes | 59 858 bytes |
 | `bin/texi/eszterengine.html` | 35 973 bytes | 36 344 bytes |
 
 The include of both documents is `{#esd::include ../FILE}` with no start and no
@@ -407,8 +407,10 @@ partial refactorings and one-off experiments. They are kept only for reference.
 ## Frozen copy of the old HTML/web build harness (`OLD/html/`)
 
 `html/` holds the source of the project web site (Jamal + ssplit), but the live
-rebuild flows (`mkweb.cmd`, `mksamples.cmd`, `mkth*.cmd`) always run the
-**top-level** `jamal.pl`, `ssplit.pl` and `mkweb.pl`. The copies that used to sit
+rebuild flows (`mkweb.cmd`, `mksamples.cmd`, `mkth*.cmd`) used to run the
+**top-level** `jamal.pl`, `ssplit.pl` and `mkweb.pl`; they run the C tools of
+`tools/codegen` now (see *The Windows command files and `ssplit`*). The copies
+that used to sit
 *inside* `html/`, `html/examples/` and `html/embdguid/` were frozen snapshots of
 that tooling together with their own tiny driver scripts; nothing referenced them
 anymore, so they are archived here:
@@ -588,6 +590,62 @@ byte the same 398 057 bytes, so the fifty lines above are the whole difference
 that the port makes in the User Guide.  `./mkth.sh all` runs without Perl and, in
 a tree where `./setup --install` has run, reports nothing at all.
 
+## The Windows command files, and the `ssplit` tool
+
+The documentation drivers of the Windows side were the last place in the tree
+that ran Perl.  `mkth.cmd` is the twin of `mkth.sh` now: it takes the name of a
+document of `texi/`, or `all` for every one of them, runs `bin\tools\jamal` with
+the directory of the document as the current directory and then `bin\tools\t2h`
+on the texi it wrote, so the result is `bin\texi\<name>.texi` and the html pages
+next to it, exactly where the makefiles of the modules put `mod_*.texi`.  The
+three things `mkth.sh` does besides are in it too: `mkcdoc` writes the command
+reference chapter before `ug` is built, `regtest` and `samplebas` are run from
+their `tmp/` subdirectory with `bin\exe` on the `PATH`, and a missing
+`install.sh`, `mkdeb.sh` or `etc-init.d-sbhttpd` is reported instead of coming
+out as an empty listing.
+
+Around it, the command files that used to be separate drivers are calls of it:
+
+| Command file | What it is now |
+|--------------|----------------|
+| `mkthl.cmd` | the light build: `mkth.cmd` runs neither TeX nor the Microsoft help compiler any more, so the light build and the full one are the same |
+| `mkthm.cmd` | `mkth.cmd --texi <page>`: the module makefiles write `bin\texi\mod_<module>.texi`, this converts one to html |
+| `mktexihtml.cmd` | `mkth.cmd devguide ug auxfiles source` |
+| `mksamples.cmd` | `mkth.cmd <document>` for the two documents of the regression suite |
+| `mkath.cmd` | `mkth.cmd all`, and then `mkth.cmd --texi` for every `bin\texi\mod_*.texi` that `make` has left there |
+
+`mkweb.cmd` and `examples/sibawa/mktm.cmd` needed a tool of their own, the
+`ssplit.pl` source splitter, which cuts a text file into the files its `%file`
+lines name.  It is `tools/codegen/ssplit.c` now and is built with the other
+tools, so `mkweb.cmd` splits `html/source.txt` with `bin\tools\ssplit` -- the
+first file it names is the macro package `macros.jim` -- and then runs
+`bin\tools\jamal` on every `.jam` file with that package, which is the loop
+`mkweb.pl` had.  `mktm.cmd` does the same two steps for the template of the
+SIBawa example.  `ssplit.pl` and `mkweb.pl` stay in the tree as the reference
+originals and are still the source listings of the `auxfiles` document, which
+now says where the C tools come in.
+
+The `doc` target of `Makefile.nt.jam` was the last Perl of that file: it read
+`modules.sdd` and `scriba.sdd`, two description files that exist neither in the
+tree nor in its history, and ran `esd2html.pl` on them.  The target is gone and
+`esd2html.pl` is a relic that nothing calls.
+
+*Checked*, for `ssplit` against the Perl on this machine:
+
+| Check | Result |
+|-------|--------|
+| `perl ssplit.pl html/source.txt out` against `bin/tools/ssplit html/source.txt out` | the same 62 files, byte for byte the same once the CR the Perl leaves on UNIX is taken off.  The port takes the CR off with the LF on either system, the way the other ports of the tree do, see the note at the top of `tools/codegen/ssplit.c` |
+| a `%file`/`%dir` fixture, and the second argument as the output directory | the same tree, subdirectory and all |
+| a file that did not change between two runs | not rewritten, as in the Perl (the `return if $buffer eq $sbuffer` case) |
+| `-h`, and a file that cannot be opened | the same help text, the same error text, and the same exit status `2` |
+| text before the first `%file` | the same message, `Is there text before the first '%file' ??`, and status 255 against the errno the Perl happens to exit with |
+
+What could **not** be checked here is the command files themselves.  A `.cmd`
+runs on Windows only, and this machine has neither Windows nor Wine, so what is
+untested is the batch language of the files and not the build they drive: they
+call the same `bin\tools\jamal` and `bin\tools\t2h` that the verified UNIX driver
+`mkth.sh` calls, with the same arguments in the same directories.
+
 ## Build files that still call Perl
 
 What the build runs: nothing.  What is left in the tree:
@@ -604,11 +662,12 @@ What the build runs: nothing.  What is left in the tree:
   * `esd2html.pl`, the source documentation to HTML converter: it is a general
     purpose program that reads an `.sdd` description file, and there is no
     `.sdd` file in this tree nor in its history.  The `doc` target of
-    `Makefile.nt.jam` is the only place that calls it (`modules.sdd`,
-    `scriba.sdd`).
+    `Makefile.nt.jam` was the only place that called it (`modules.sdd`,
+    `scriba.sdd`); that target is gone and nothing calls it now.
   * `ssplit.pl` and `mkweb.pl`, which made the web site out of
-    `html/source.txt`: that harness is in `OLD/html/` (see above), and `mkweb.pl`
-    runs `..\jamal.pl` on a Windows path.
+    `html/source.txt`: the two reference originals of the flow `mkweb.cmd` runs
+    with the C tools now (see *The Windows command files and `ssplit`*), and
+    `mkweb.pl` still runs `..\jamal.pl` on a Windows path.
   * `convert.pl`, `convert.sh` and `uncr`, the helpers that converted files of a
     release between the CR/LF conventions when they were uploaded.
   * `heber.pl`, a sample external preprocessor of ScriptBasic (HTML embedded
@@ -617,16 +676,16 @@ What the build runs: nothing.  What is left in the tree:
   `moduletablemaker.pl`, `statltmaker.pl` and `lmt_help.pl` were named by this
   section before; they are in `OLD/` with the other archives of the dead Perl,
   not in the tree.
-* The `.cmd` command files: `mkcdoc.cmd`, `modconfigure.cmd` and `setup.cmd` run
-  the C tools now (`bin\tools\mkcdoc`, `bin\tools\jamal.exe`,
-  `bin\tools\setup.exe`).  `mkth.cmd`, `mkthl.cmd`, `mkthm.cmd`,
-  `mktexihtml.cmd`, `mksamples.cmd` and `mkweb.cmd` still call Perl and assume
-  the `html\texi` harness of the old document build, which is in `OLD/html/`:
-  they are the Windows side of the documentation flow of that harness, and the
-  port of the driver of this tree is `mkth.sh`.  A Windows machine would be
-  needed to write and test their replacement, so they are left as they are.
-* `Makefile.nt.jam` no longer uses Perl for the code generators or for
-  `scriba.def`; only its `doc` target calls `perl esd2html.pl` with the two
-  `.sdd` files that do not exist.
+* No `.cmd` command file calls Perl any more.  `mkcdoc.cmd`, `modconfigure.cmd`
+  and `setup.cmd` did it already (`bin\tools\mkcdoc`, `bin\tools\jamal.exe`,
+  `bin\tools\setup.exe`); `mkth.cmd` is the twin of `mkth.sh` now,
+  `mkthl.cmd`, `mkthm.cmd`, `mktexihtml.cmd`, `mksamples.cmd` and `mkath.cmd`
+  are calls of it, and `mkweb.cmd` and `examples/sibawa/mktm.cmd` use
+  `bin\tools\jamal.exe` and the new `bin\tools\ssplit.exe`.  The command files
+  themselves could not be run here -- that needs a Windows machine -- see *The
+  Windows command files and `ssplit`*.
+* `Makefile.nt.jam` uses no Perl at all now: the code generators and `scriba.def`
+  are C programs, and its `doc` target, which called `perl esd2html.pl` with the
+  two `.sdd` files that do not exist, is gone.
 * `html/source.txt` (historical web source) still names `syntaxer.pl`.
 * `setup.log` is a committed build log from 2013, before the C tools existed.

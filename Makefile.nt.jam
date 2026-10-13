@@ -67,8 +67,8 @@ clean:
 #     cd tools\codegen  &&  make
 #
 # Any C compiler supporting C99 can build them; the executables are
-# bin\tools\generrh.exe, headerer.exe, lmt_make.exe, syntaxer.exe and
-# mkscribadef.exe.
+# bin\tools\generrh.exe, headerer.exe, lmt_make.exe, syntaxer.exe,
+# mkscribadef.exe, jamal.exe, t2h.exe, mkcdoc.exe, ssplit.exe and setup.exe.
 #
 # --------------------------------------------------------------------
 headers : *.c extensions/cgi/cgi.c errcodes.c extensions/rpool.c syntax.c notimp.c
@@ -87,18 +87,14 @@ lmt_httpd.c : lmt_httpd.def bin\tools\lmt_make.exe
 
 # --------------------------------------------------------------------
 #
-# CREATE THE SOURCE DOCUMENTATION to HTML and to LaTex, dvi and PS
+# The doc target that turned the modules.sdd and scriba.sdd description
+# files into the source documentation of the modules and of scriba is gone:
+# neither .sdd file exists in this tree nor in its history, and esd2html.pl,
+# the program that read them, is a relic kept for reference.  The documents
+# of the tree are built by mkth.cmd and mkath.cmd here and by mkth.sh on
+# UNIX, all of them through bin\tools\jamal and bin\tools\t2h.
 #
 # --------------------------------------------------------------------
-doc : *.c modules.sdd scriba.sdd
-	perl esd2html.pl modules.sdd
-	perl esd2html.pl scriba.sdd
-	$(LATEX) modules.tex
-	$(LATEX) modules.tex
-	$(LATEX) scriba.tex
-	$(LATEX) scriba.tex
-	$(DVIPS) modules.dvi
-	$(DVIPS) scriba.dvi
 
 
 #

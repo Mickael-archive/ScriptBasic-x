@@ -1,33 +1,14 @@
+@echo off
 REM
-REM this bacth file compiles a TEXI documenation
-REM the argument has to be the file to be compiled
-REM w/o the texi.jam extension
+REM mkthl is the light version of mkth: it builds the texi of a document and the
+REM html pages of it and nothing else, without the rtf, the ps, the pdf and the
+REM chm that the full build used to add.
 REM
-REM This is the light version of the batch file mkth
-REM because this one does not compile with the TeX
+REM The driver of this tree, mkth.cmd here and mkth.sh on UNIX, uses the C tools
+REM bin\tools\jamal and bin\tools\t2h and runs neither Perl nor TeX, so the
+REM light build and the full one are the same thing now.  This file is kept
+REM because it is the name the documents and the old habits use.
 REM
-REM This version can be used during development to
-REM generate a fast HTML and chm proofread version of
-REM the altered document
+REM usage: mkthl <name> [<name> ...]   (the same as mkth)
 REM
-cd html\texi
-mkdir tmp
-cd tmp
-
-perl ..\..\jamal.pl ..\%1.texi.jam %1.texi
-perl ..\..\..\t2h.pl %1.texi %1
-mkdir ..\..\..\..\html\texi\
-
-copy %1.html ..\..\..\..\html\texi\
-del %1.html
-
-rm -rf ..\..\..\..\html\texi\%1
-mkdir ..\..\..\..\html\texi\%1
-copy *.html ..\..\..\..\html\texi\%1\
-
-hhc %1.hhp
-copy *.chm ..\..\..\..\html\texi\
-
-cd ..
-rem rm -rf tmp
-cd ..\..
+call "%~dp0mkth.cmd" %*

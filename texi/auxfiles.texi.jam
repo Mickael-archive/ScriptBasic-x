@@ -93,9 +93,9 @@ extensions/ux          --- Special UNIX module
 extensions/zlib        --- zlib compression module
 filesdoc   --- auxilliary source file documentations
 gif        --- banner.gif file
-html       --- web page HTML source using the jamal preprocessor and ssplit.pl
+html       --- web page HTML source using the jamal preprocessor and ssplit
 html/texi              --- texi.jam documentation source files. Should be processed with
-                           jamal.pl first to get texi
+                           jamal first to get texi
 include    --- BASIC include files for the modules
 preproc    --- a sample preprocessor. Note that preprocessor is experimental and will change in future.
 test       --- test programs
@@ -185,7 +185,7 @@ easy to read format. This batch file runs the C code generator @file{generrh}
 
 @section mkweb.cmd
 
-This command file compiles the ScriptBasic web content. It has to be executed from the source root directory.
+This command file compiles the ScriptBasic web content. It has to be executed from the source root directory. Both steps are the C tools now: @file{tools/codegen/ssplit.c} splits @file{html/source.txt} into the @code{.jam} files it names, and @file{tools/codegen/jamal.c} processes each of them with @file{macros.jim}, which the split writes as well.
 
 [[[SourceCode mkweb.cmd]]]
 
@@ -212,7 +212,7 @@ Before releasing a new release this batch file has to be edited to alter the
 [[[SourceCode pack.cmd	]]]
 @section mksamples.cms
 
-This command file converts a @code{.texi.jam} file in the directory @file{./html/texi} using @file{jamal.pl} to @code{.texi} files and then converts it using the Perl script @xref{t2h.pl} to html files into the directory @file{../html/texi}. The command also starts TeX to convert the texi file to dvi, ps and pdf as well as the Microsoft hhc help compiler to result compiled html file (chm).
+This command file converts a @code{.texi.jam} file with @file{bin/tools/jamal} to a @code{.texi} file and then converts that with @file{bin/tools/t2h} to html pages, next to the texi in @file{bin/texi}. It is a call of @xref{mkth.cmd} with the name of the document; the version that also started TeX and the Microsoft hhc help compiler is gone with the harness that had them.
 
 Running Jamal may result several @code{.bas} files in the temporary directory. This command file puts them into a @code{tgz} archive and copies to the directory @file{html/texi}.
 
@@ -228,7 +228,7 @@ This command is similar to @xref{mkth.com} except that this file also cares the 
 
 @section mkth.cmd
 
-This command file converts a @code{.texi.jam} files in the directory @file{./html/texi} using @file{jamal.pl} to @code{.texi} files and then converts it using the Perl script @xref{t2h.pl} to html files into the directory @file{../html/texi}. The command also starts TeX to convert the texi file to dvi, ps and pdf as well as the Microsoft hhc help compiler to result compiled html file (chm). The command file deletes all auxiliary files when done.
+This command file converts a @code{.texi.jam} file of the @file{texi} directory with @file{bin/tools/jamal} to a @code{.texi} file in @file{bin/texi} and then converts that with @file{bin/tools/t2h} to the html pages, which land next to the texi file. It needs neither Perl nor TeX: the tools are the C programs of @file{tools/codegen}. The name @code{all} builds every document of the tree.
 
 The script has to be executed from the source directory and should get a single argument that is the name of the documentation file without any extension. For example
 
@@ -244,14 +244,14 @@ The command file @xref{mkath.cmd} calls this command file for each @code{.texi.j
 
 @section mkthl.cmd
 
-This command file should be used the same way as @xref{mkth.cmd}. This command file performs only minimal compilation, running only @file{jamal.pl} and @file{t2h.pl} on the documentation file, but does not run TeX or dviXX or Microsoft help compiler.
+This command file should be used the same way as @xref{mkth.cmd}. It performs only the minimal compilation, running only @file{bin/tools/jamal} and @file{bin/tools/t2h} on the documentation file, and neither TeX nor the Microsoft help compiler. Since @xref{mkth.cmd} itself runs neither of those any more, the light build and the full one are the same and this file is a call of it.
 
 This command file is to be used instead of @xref{mkth.cmd} when editing the documentation and there is a need for a fast proof reading, but you do not need all versions of the document.
 
 @section mkath.cmd
 
-This is a simple command script that calls @xref{mkth.cmd} for each @code{.texi.jam} file that
-is in the @file{./html/texi} directory.
+This is a simple command script that calls @xref{mkth.cmd} for every document of the tree and
+then converts the module pages that @file{make} has left in @file{bin/texi}.
 
 [[[SourceCode mkath.cmd]]]
 
@@ -311,13 +311,13 @@ The Perl program used to automate the code maintenance are listed in this chapte
 
 @section ssplit.pl
 
-This file splits the file @file{html/source.txt} into several Jamal files. This file is called from @xref{mkweb.pl}
+This file splits the file @file{html/source.txt} into several Jamal files. The C port @file{tools/codegen/ssplit.c} is what the command files run; this is the Perl original, kept for reference.
 
 [[[SourceCode ssplit.pl]]]
 
 @section mkweb.pl
 
-This Perl script is invoked by @xref{mkweb.cmd} and it executes several Jamal processes for the web jamal files.
+This Perl script executed several Jamal processes for the web jamal files and was invoked by @xref{mkweb.cmd}. The command file does the same with the C tools now, so this is the Perl original, kept for reference.
 
 [[[SourceCode mkweb.pl]]]
 

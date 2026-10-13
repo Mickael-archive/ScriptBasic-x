@@ -1,23 +1,9 @@
-call mkth devguide
-call mkth ug
-call mkth auxfiles
-call mkth source
-call mkth eszterengine
-call mkth docudoc
-call mkthm mod_bdb
-call mkthm mod_cgi
-call mkthm mod_cio
-call mkthm mod_curl
-call mkthm mod_dbg
-call mkthm mod_gd
-call mkthm mod_hash
-call mkthm mod_mt
-call mkthm mod_mysql
-call mkthm mod_nt
-call mkthm mod_odbc
-call mkthm mod_re
-call mkthm mod_t
-call mkthm mod_trial
-call mkthm mod_zlib
-call mksamples samplebas
-call mksamples regtest
+@echo off
+REM
+REM Builds every document of the tree through mkth.cmd, and then the html of
+REM every module page that make has written into bin\texi as mod_*.texi.
+REM
+REM Run make all first, so that those module pages exist.
+REM
+call "%~dp0mkth.cmd" all
+for %%f in ("%~dp0bin\texi\mod_*.texi") do if exist "%%~ff" call "%~dp0mkth.cmd" --texi %%~nf
