@@ -83,10 +83,10 @@ Evidence, against the Perl originals on the same input:
 
 | Check | Result |
 |-------|--------|
-| the 30 `*.texi.jam` inputs of the tree (the 9 of `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | identical byte for byte, output and exit status, for every one of them that both sides can build here: the 7 guides the Perl can still compare, `esd.texi.jam` and the 7 module pages this machine has the libraries for. `devguide` and `auxfiles` differ, both for the first reason in the table below; `regtest` and `samplebas` are the two the C port does *more* for, see the `samples` section |
+| the 30 `*.texi.jam` inputs of the tree (the 9 of `texi/`, `esd.texi.jam`, the 20 module `manual.texi.jam`): `perl jamal.pl` vs `bin/tools/jamal` | identical byte for byte, output and exit status, for every one of them that both sides can build here: the 7 guides the Perl can still compare, `esd.texi.jam` and the 7 module pages this machine has the libraries for. `devguide` and `auxfiles` differ, both for the first reason in the table below (`eszterengine` joins them once `./setup --install` has written the init script it includes, see *The install files, and the two documents that need them*); `regtest` and `samplebas` are the two the C port does *more* for, see the `samples` section |
 | the `esd` substitution engine: every `esd::command` of the tree, applied to 4 516 lines of the real documentation | 126 448 substitutions, all identical |
 | `./mkth.sh all` twice, the second time with `perl` replaced by a script that refuses to run | exit 0, not one Perl invocation, the two runs byte identical, 3 036 files |
-| the 8 documents of `./mkth.sh all` through `perl t2h.pl` vs `bin/tools/t2h`, on the same `.texi` input | 3 035 of the 3 036 output files identical |
+| the documents of `./mkth.sh all` through `perl t2h.pl` vs `bin/tools/t2h`, on the same `.texi` input | 3 035 of the 3 036 output files identical |
 | a whole `./setup --unix` build of the tree, once driven by `bin/tools/setup` and once by `perl setup.pl` | 1 057 files on either side, all identical except `scriba`, `scribacmd.o` and `setup.log`, which carry the compilation time |
 
 Differences, all of them places where the Perl original depends on the
@@ -205,8 +205,8 @@ exists: it did `cd html/texi`, made a `tmp/` under it and copied the results up
 `../../../../`.  Nothing in it could run in this tree.  It now drives
 `bin/tools/jamal` and `bin/tools/t2h` and writes `bin/texi/<name>.texi` plus the
 html pages next to it, exactly where the module makefiles put `mod_*.texi`.
-`./mkth.sh all` builds the eight documents that can be built here, and it needs
-neither Perl nor LaTeX.
+`./mkth.sh all` builds the ten documents of the tree, and it needs neither Perl
+nor LaTeX.
 
 Two include mechanisms meet in these files and they do not resolve a file name
 the same way:
@@ -232,13 +232,14 @@ current directory instead, and the first version of the script filled the root o
 the tree with 2 772 html pages.  It passes the full output path now, and
 `bin/` is in `.gitignore`, as it is for the module pages.
 
-Two documents still cannot be complete, and `mkth.sh` says so instead of quietly
-writing a short page:
-
-| Document | What is missing |
-|----------|-----------------|
-| `texi/auxfiles.texi.jam` | `install.sh` and `mkdeb.sh`, which `./setup --install` writes.  It also still had a section each for `mkdoc.cmd` and `precompile.cmd`, two command files that left the tree long ago; those sections are gone, and with them two `SourceCode` includes that could only fail |
-| `texi/eszterengine.texi.jam` | `etc-init.d-sbhttpd`, which `./setup --install` writes too |
+Two of the ten documents include a file that is not in the tree and that only
+`./setup --install` writes: `texi/auxfiles.texi.jam` includes `install.sh` and
+`mkdeb.sh`, and `texi/eszterengine.texi.jam` includes `etc-init.d-sbhttpd`.  In a
+tree that never ran the installation those two sections come out empty, and
+`mkth.sh` names the file it is missing instead of quietly writing a short page.
+Once `./setup --install` has run there is nothing to report: `./mkth.sh all` is
+silent and the sections carry the text the include selects, which is what the
+next section is about.
 
 Two more were on this list and are not any more: the `ug` chapter was missing its
 command reference chapter, which `bin/tools/mkcdoc` writes now, and
@@ -248,8 +249,60 @@ the C jamal (see below).  Both are part of `all`.
 With all of that, the guides build: from a checkout of this commit,
 `./mkth.sh all` gives 10 `.texi` documents and 3 903 html pages in `bin/texi` --
 1 960 `.html` and 1 943 `.htm` -- including `ug.html` at 492 242 bytes,
-`devguide.html` at 627 021 and `source.html` at 393 156, and the two missing
-pieces above are reported on the way.
+`devguide.html` at 627 021 and `source.html` at 393 156, and nothing is missing
+once `./setup --install` has written the files the two above need.
+
+### The install files, and the two documents that need them
+
+`./setup --install` is what writes the files a ScriptBasic installation is made
+of: `install.sh` (the shell script that copies everything into place),
+`mkdeb.sh` and `mkrpm.sh` (the two package scripts), the `etc-init.d-sbhttpd`
+init script of the Eszter engine, `config.pl` and the configuration
+`scriba.conf.unix.lsp`.  None of the six is in the repository: they carry the
+installation directories of one machine, and the `--install` run probes the
+largest `maxlevel` for it.  They are in `.gitignore` now, so the documented flow
+
+    ./setup --unix
+    ./setup --unix --install --no-install-interactive
+    ./mkth.sh all
+
+leaves no untracked file behind.  (The tracked `configure.jim`, `compile`,
+`extensions/*/makefile` and the rest are the files `./setup` rewrites; the
+*setup program* section below explains that habit.)
+
+Two of the ten documents read those files: `auxfiles` includes `install.sh` and
+`mkdeb.sh`, `eszterengine` includes `etc-init.d-sbhttpd`.  Without the
+installation `mkth.sh` says which file is missing and the section is empty;
+with it there is no warning and the section has text:
+
+| File | Without `--install` | With `--install` |
+|------|---------------------|------------------|
+| `bin/texi/auxfiles.texi` | 41 122 bytes, 4 warning lines | 48 724 bytes, none |
+| `bin/texi/eszterengine.texi` | 29 849 bytes, 2 warning lines | 30 225 bytes, none |
+| `bin/texi/auxfiles.html` | 50 352 bytes | 58 015 bytes |
+| `bin/texi/eszterengine.html` | 35 973 bytes | 36 344 bytes |
+
+The include of both documents is `{#esd::include ../FILE}` with no start and no
+stop string, and `esd::include` switches on at an empty line and off at the next
+one.  That is the same mechanism that takes the lines between the `/**` markers
+of a module source; here the marker is the empty line, so the sections carry the
+runs of lines between blank lines, exactly as the Perl original did.  For
+`etc-init.d-sbhttpd` that is the three assignments, the `$DAEMONIMAGE` check with
+its `fi`, the `for`/`do` pair and the final `exit 0`.
+
+*Checked:*
+
+| Check | Result |
+|-------|--------|
+| `./setup --unix`, then `./setup --unix --install --no-install-interactive`, then `./mkth.sh all` | exit 0, not one Perl invocation, and **no warning at all** against the six warning lines of the same flow without `--install` |
+| the two documents against the Perl with the three files in place | byte for byte what `perl jamal.pl` writes when the Perl iterates `%COMMAND` in sorted key order; a stock Perl iterates it in hash order and instead prints `@@$DAEMONIMAGE` where the sorted order (and texinfo) wants `@$DAEMONIMAGE` |
+| the tree after the three commands | no untracked file; `git status` shows only the tracked files `./setup` rewrites |
+
+The second row is the hash-order difference of the *documentation chain* section
+above, in `eszterengine` this time: it could not show while the init script was
+missing, because there was no `$` or `@` in the document to escape.  With the
+file in place, `eszterengine` is the third document of the chain -- after
+`devguide` and `auxfiles` -- whose Perl output cannot be reproduced run to run.
 
 ## The setup program
 
@@ -532,9 +585,8 @@ the same `scriba.c`, byte for byte.
 The documentation chain of the two is otherwise untouched: with the *same*
 `commands.texi` the C tools and the Perl tools build `bin/texi/ug.texi` byte for
 byte the same 398 057 bytes, so the fifty lines above are the whole difference
-that the port makes in the User Guide.  `./mkth.sh all` runs without Perl and
-reports the two missing `install.sh` and `mkdeb.sh` of the `auxfiles` document
-only; the command reference warning of `ug` is gone.
+that the port makes in the User Guide.  `./mkth.sh all` runs without Perl and, in
+a tree where `./setup --install` has run, reports nothing at all.
 
 ## Build files that still call Perl
 
